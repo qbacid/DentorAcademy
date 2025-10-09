@@ -1,0 +1,48 @@
+﻿<div class="sidebar-nav">
+    <!-- Mobile hamburger button -->
+    <button class="hamburger-btn" @onclick="HandleMenuToggle" aria-label="Toggle menu">
+        <span class="hamburger-icon">
+            <span></span>
+            <span></span>
+            <span></span>
+        </span>
+    </button>
+    
+    <div class="brand">
+        <img src="images/logo_pro.png" alt="Luxadent Pro" width="100%" height="auto"/>
+    </div>
+    
+    <nav class="links" @onclick="HandleLinkClick">
+        <NavLink href="" Match="NavLinkMatch.All">
+            <i class="bi bi-house-door"></i> Home
+        </NavLink>
+        <NavLink href="quizzes">
+            <i class="bi bi-list-check"></i> Quizzes
+        </NavLink>
+        <NavLink href="quiz-import">
+            <i class="bi bi-upload"></i> Import Quiz
+        </NavLink>
+    </nav>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnMenuToggle { get; set; }
+    
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    private async Task HandleMenuToggle()
+    {
+        await OnMenuToggle.InvokeAsync();
+    }
+
+    private async Task HandleLinkClick()
+    {
+        // Close menu on mobile when a link is clicked
+        if (IsOpen)
+        {
+            await OnMenuToggle.InvokeAsync();
+        }
+    }
+}

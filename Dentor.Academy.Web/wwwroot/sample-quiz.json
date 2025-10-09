@@ -1,0 +1,156 @@
+{
+  "title": "Dental Hygiene Fundamentals",
+  "description": "Test your knowledge of basic dental hygiene principles and practices",
+  "passingScore": 70,
+  "timeLimitMinutes": 30,
+  "questions": [
+    {
+      "questionText": "What is the recommended frequency for brushing teeth?",
+      "questionType": "MultipleChoice",
+      "points": 1,
+      "displayOrder": 1,
+      "explanation": "Dentists recommend brushing teeth at least twice a day - once in the morning and once before bed.",
+      "answerOptions": [
+        {
+          "optionText": "Once a day",
+          "isCorrect": false,
+          "displayOrder": 1
+        },
+        {
+          "optionText": "Twice a day",
+          "isCorrect": true,
+          "displayOrder": 2
+        },
+        {
+          "optionText": "Three times a day",
+          "isCorrect": false,
+          "displayOrder": 3
+        },
+        {
+          "optionText": "After every meal",
+          "isCorrect": false,
+          "displayOrder": 4
+        }
+      ]
+    },
+    {
+      "questionText": "How long should you brush your teeth for optimal cleaning?",
+      "questionType": "MultipleChoice",
+      "points": 1,
+      "displayOrder": 2,
+      "explanation": "The American Dental Association recommends brushing for two minutes to ensure thorough cleaning of all tooth surfaces.",
+      "answerOptions": [
+        {
+          "optionText": "30 seconds",
+          "isCorrect": false,
+          "displayOrder": 1
+        },
+        {
+          "optionText": "1 minute",
+          "isCorrect": false,
+          "displayOrder": 2
+        },
+        {
+          "optionText": "2 minutes",
+          "isCorrect": true,
+          "displayOrder": 3
+        },
+        {
+          "optionText": "5 minutes",
+          "isCorrect": false,
+          "displayOrder": 4
+        }
+      ]
+    },
+    {
+      "questionText": "Flossing is essential for maintaining good oral health.",
+      "questionType": "TrueFalse",
+      "points": 1,
+      "displayOrder": 3,
+      "explanation": "Flossing removes plaque and food particles from between teeth where a toothbrush cannot reach, making it essential for complete oral hygiene.",
+      "answerOptions": [
+        {
+          "optionText": "True",
+          "isCorrect": true,
+          "displayOrder": 1
+        },
+        {
+          "optionText": "False",
+          "isCorrect": false,
+          "displayOrder": 2
+        }
+      ]
+    },
+    {
+      "questionText": "Which of the following are benefits of regular dental checkups? (Select all that apply)",
+      "questionType": "MultipleCheckbox",
+      "points": 1,
+      "displayOrder": 4,
+      "explanation": "Regular dental checkups provide multiple benefits including early cavity detection, professional cleaning, gum disease prevention, and oral cancer screening.",
+      "answerOptions": [
+        {
+          "optionText": "Early detection of cavities",
+          "isCorrect": true,
+          "displayOrder": 1
+        },
+        {
+          "optionText": "Professional teeth cleaning",
+          "isCorrect": true,
+          "displayOrder": 2
+        },
+        {
+          "optionText": "Prevention of gum disease",
+          "isCorrect": true,
+          "displayOrder": 3
+        },
+        {
+          "optionText": "Teeth whitening",
+          "isCorrect": false,
+          "displayOrder": 4
+        },
+        {
+          "optionText": "Oral cancer screening",
+          "isCorrect": true,
+          "displayOrder": 5
+        }
+      ]
+    },
+    {
+      "questionText": "What is the main purpose of fluoride in toothpaste?",
+      "questionType": "MultipleChoice",
+      "points": 1,
+      "displayOrder": 5,
+      "explanation": "Fluoride strengthens tooth enamel and helps prevent tooth decay by making teeth more resistant to acid attacks from bacteria.",
+      "answerOptions": [
+        {
+          "optionText": "To whiten teeth",
+          "isCorrect": false,
+          "displayOrder": 1
+        },
+        {
+          "optionText": "To freshen breath",
+          "isCorrect": false,
+          "displayOrder": 2
+        },
+        {
+          "optionText": "To strengthen enamel and prevent cavities",
+          "isCorrect": true,
+          "displayOrder": 3
+        },
+        {
+          "optionText": "To remove stains",
+          "isCorrect": false,
+          "displayOrder": 4
+        }
+      ]
+    },
+    {
+      "questionText": "In one sentence, explain why flossing is important.",
+      "questionType": "ShortAnswer",
+      "points": 0,
+      "displayOrder": 6,
+      "explanation": "Flossing removes plaque and food particles from between teeth, preventing gum disease.",
+      "answerOptions": []
+    }
+  ]
+}

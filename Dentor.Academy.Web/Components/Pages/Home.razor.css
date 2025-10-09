@@ -1,0 +1,127 @@
+/* Home page styles - rounded and minimal */
+
+/* Loading spinner */
+.spinner-border {
+    width: 3rem !important;
+    height: 3rem !important;
+}
+
+/* Empty state */
+.bi-inbox {
+    font-size: 4rem;
+    color: #dee2e6;
+}
+
+/* Quiz cards */
+.quiz-card {
+    border-radius: 24px;
+    border: 1px solid #e5e9f3;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.quiz-card:hover {
+    border-color: #cfd6e5;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-3px);
+}
+
+.quiz-card .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-bottom: none;
+    padding: 0.85rem 1rem;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+}
+
+.quiz-card:hover .card-header {
+    background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
+}
+
+.quiz-card .card-body {
+    padding: 1rem;
+}
+
+.quiz-card .card-footer {
+    background: #fafbfe;
+    border-top: 1px solid #edf0f6;
+    padding: 0.6rem 1rem 0.8rem 1rem;
+    border-bottom-left-radius: 24px;
+    border-bottom-right-radius: 24px;
+    transition: background .18s ease;
+}
+
+.quiz-card:hover .card-footer {
+    background: #f4f6fb;
+}
+
+.quiz-card .btn {
+    border-radius: 18px;
+    font-weight: 600;
+    transition: background .18s ease;
+}
+
+.quiz-card .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.quiz-card .btn-primary:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
+}
+
+/* Quiz description */
+.quiz-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Quiz info icons */
+.quiz-info i {
+    font-size: 1.1rem;
+}
+
+/* Stats card */
+.stats-card {
+    border-radius: 24px;
+    border: 1px solid #e5e9f3;
+    background: #fafbfe;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.stat-item {
+    padding: 1rem;
+}
+
+.stat-item h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+/* Empty state card */
+.card.shadow-sm {
+    border-radius: 24px;
+    border: 1px solid #e5e9f3;
+}
+
+.card.shadow-sm .btn {
+    border-radius: 18px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stat-item h3 {
+        font-size: 2rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quiz-card, .quiz-card:hover {
+        transform: none !important;
+    }
+}
+

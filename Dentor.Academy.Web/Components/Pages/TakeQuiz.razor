@@ -1,0 +1,714 @@
+@page "/quiz/{QuizId:int}"
+@inject Dentor.Academy.Web.Services.QuizTakingService QuizService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(_quiz?.Title ?? "Take Quiz")</PageTitle>
+
+<div class="container mt-4">
+    @if (!_hasStarted)
+    {
+        <!-- Participant Registration Form -->
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">@_quiz?.Title</h3>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(_quiz?.Description))
+                        {
+                            <p class="text-muted">@_quiz.Description</p>
+                            <hr />
+                        }
+
+                        <div class="mb-3">
+                            <h5>Quiz Information:</h5>
+                            <ul class="list-unstyled">
+                                <li><strong>Total Questions:</strong> @_quiz?.TotalQuestions</li>
+                                @if (_quiz?.TimeLimitMinutes != null)
+                                {
+                                    <li><strong>Time Limit:</strong> @_quiz.TimeLimitMinutes minutes</li>
+                                }
+                                <li><strong>Passing Score:</strong> @_quiz?.PassingScore%</li>
+                            </ul>
+                        </div>
+
+                        <hr />
+
+                        <h5 class="mb-3">Enter Your Information</h5>
+
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label">Full Name *</label>
+                            <input type="text" 
+                                   class="form-control @(_showValidation && string.IsNullOrWhiteSpace(_fullName) ? "is-invalid" : "")" 
+                                   id="fullName" 
+                                   @bind="_fullName" 
+                                   placeholder="Enter your full name"
+                                   required />
+                            @if (_showValidation && string.IsNullOrWhiteSpace(_fullName))
+                            {
+                                <div class="invalid-feedback">Full name is required</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address *</label>
+                            <input type="email" 
+                                   class="form-control @(_showValidation && !IsValidEmail(_email) ? "is-invalid" : "")" 
+                                   id="email" 
+                                   @bind="_email" 
+                                   placeholder="your.email@example.com"
+                                   required />
+                            @if (_showValidation && string.IsNullOrWhiteSpace(_email))
+                            {
+                                <div class="invalid-feedback">Email is required</div>
+                            }
+                            else if (_showValidation && !IsValidEmail(_email))
+                            {
+                                <div class="invalid-feedback">Please enter a valid email address</div>
+                            }
+                        </div>
+
+                        <hr />
+
+                        <h5 class="mb-3">Learning Preferences</h5>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" style="min-height: 25px;min-width: 25px;"
+                                       id="showExplanations" 
+                                       @bind="_showExplanationsImmediately" />
+                                <label class="form-check-label" for="showExplanations">
+                                    <strong>Show explanations immediately after answering</strong>
+                                    <br />
+                                    <small class="text-muted">If unchecked, explanations will be shown at the end with your results</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button class="btn btn-primary btn-lg" @onclick="StartQuiz" disabled="@_isStarting">
+                                @if (_isStarting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span>Starting...</span>
+                                }
+                                else
+                                {
+                                    <span>Start Quiz</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (!_isCompleted)
+    {
+        <!-- Quiz Taking Interface -->
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Progress Bar -->
+                <div class="card mb-3">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small">Question @(_currentQuestionIndex + 1) of @_quiz?.TotalQuestions</span>
+                            <span class="text-muted small">@AnsweredCount answered</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" 
+                                 role="progressbar" 
+                                 style="width: @ProgressPercentage%"
+                                 aria-valuenow="@ProgressPercentage" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Card -->
+                @if (CurrentQuestion != null)
+                {
+                    <div class="card shadow-lg">
+                        <div class="card-header bg-light">
+                            <h4 class="mb-0">Question @(_currentQuestionIndex + 1)</h4>
+                        </div>
+                        <div class="card-body p-4">
+                            <h5 class="card-title mb-4">@CurrentQuestion.QuestionText</h5>
+
+                            <!-- Answer Options -->
+                            @if (CurrentQuestion.QuestionType == "MultipleChoice" || CurrentQuestion.QuestionType == "TrueFalse")
+                            {
+                                <div class="list-group">
+                                    @foreach (var option in CurrentQuestion.AnswerOptions)
+                                    {
+                                        <label class="list-group-item list-group-item-action @(IsOptionSelected(option.AnswerOptionId) ? "active" : "")"
+                                               style="cursor: pointer;">
+                                            <input type="radio" 
+                                                   class="form-check-input me-2" 
+                                                   name="answer_@CurrentQuestion.QuestionId"
+                                                   value="@option.AnswerOptionId"
+                                                   checked="@IsOptionSelected(option.AnswerOptionId)"
+                                                   @onchange="@(() => SelectSingleOption(option.AnswerOptionId))" />
+                                            <span>@option.OptionText</span>
+                                        </label>
+                                    }
+                                </div>
+                            }
+                            else if (CurrentQuestion.QuestionType == "MultipleCheckbox")
+                            {
+                                <div class="list-group">
+                                    @foreach (var option in CurrentQuestion.AnswerOptions)
+                                    {
+                                        <label class="list-group-item list-group-item-action @(IsOptionSelected(option.AnswerOptionId) ? "active" : "")"
+                                               style="cursor: pointer;">
+                                            <input type="checkbox" 
+                                                   class="form-check-input me-2"
+                                                   checked="@IsOptionSelected(option.AnswerOptionId)"
+                                                   @onchange="@(() => ToggleMultipleOption(option.AnswerOptionId))" />
+                                            <span>@option.OptionText</span>
+                                        </label>
+                                    }
+                                </div>
+                                <small class="text-muted mt-2 d-block">Select all that apply</small>
+                            }
+                            else if (CurrentQuestion.QuestionType == "UserShortAnwswer")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Your Answer</label>
+                                    <textarea class="form-control"
+                                              rows="4"
+                                              maxlength="500"
+                                              placeholder="Type a short answer (max 500 characters)"
+                                              value="@GetCurrentShortText()"
+                                              @oninput="OnShortTextChanged"></textarea>
+                                    <small class="text-muted">@((GetCurrentShortText().Length)) / 500</small>
+                                </div>
+                            }
+
+                            <!-- Show explanation immediately if enabled and question is answered -->
+                            @if (_showExplanationsImmediately && _showCurrentExplanation && HasCurrentQuestionExplanation())
+                            {
+                                <div class="explanation-box mt-4">
+                                    <div class="explanation-header">
+                                        <i class="bi bi-lightbulb"></i> Explanation
+                                    </div>
+                                    <div class="explanation-content">
+                                        <p class="mb-2">@CurrentQuestion.Explanation</p>
+                                        @if (!string.IsNullOrEmpty(CurrentQuestion.ExplanationImageUrl))
+                                        {
+                                            <div class="explanation-image mt-3">
+                                                <img src="@CurrentQuestion.ExplanationImageUrl" alt="Explanation" class="img-fluid rounded" />
+                                            </div>
+                                        }
+                                        <div class="mt-3">
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="HideExplanation">
+                                                <i class="bi bi-eye-slash"></i> Hide Explanation
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else if (_showExplanationsImmediately && IsQuestionAnswered() && !_showCurrentExplanation)
+                            {
+                                <div class="mt-4">
+                                    <button class="btn btn-info" @onclick="ShowExplanation">
+                                        <i class="bi bi-lightbulb"></i> Show Explanation
+                                    </button>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Card Footer with Navigation -->
+                        <div class="card-footer bg-white border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-outline-secondary" 
+                                        @onclick="PreviousQuestion"
+                                        disabled="@(_currentQuestionIndex == 0)">
+                                    <i class="bi bi-arrow-left"></i> Previous
+                                </button>
+
+                                <div class="d-flex gap-2">
+                                    @if (_currentQuestionIndex < _quiz!.TotalQuestions - 1)
+                                    {
+                                        <button class="btn btn-primary" 
+                                                @onclick="NextQuestion">
+                                            Next <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-success" 
+                                                @onclick="ShowSubmitConfirmation">
+                                            <i class="bi bi-check-circle"></i> Submit Quiz
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (AnsweredCount < _quiz!.TotalQuestions && _currentQuestionIndex == _quiz.TotalQuestions - 1)
+                            {
+                                <div class="alert alert-info mt-3 mb-0">
+                                    <small><i class="bi bi-info-circle"></i> You have @UnansweredCount unanswered question@(UnansweredCount == 1 ? "" : "s"). You can submit anyway - unanswered questions will be marked as incorrect.</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Submit Confirmation Modal -->
+                @if (_showSubmitModal)
+                {
+                    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Submit Quiz?</h5>
+                                    <button type="button" class="btn-close" @onclick="@(() => _showSubmitModal = false)"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to submit your quiz?</p>
+                                    <p class="mb-0"><strong>Answered:</strong> @AnsweredCount / @_quiz?.TotalQuestions questions</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" @onclick="@(() => _showSubmitModal = false)">
+                                        Review Answers
+                                    </button>
+                                    <button type="button" class="btn btn-success" @onclick="SubmitQuiz" disabled="@_isSubmitting">
+                                        @if (_isSubmitting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                            <span>Submitting...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Confirm Submit</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Results Display -->
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-lg">
+                    <div class="card-header @(_result!.Passed ? "bg-success" : "bg-danger") text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">Quiz Results</h3>
+                            <h2 class="mb-0">@_result.Score.ToString("F1")%</h2>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="alert @(_result.Passed ? "alert-success" : "alert-danger")">
+                                    <h4 class="alert-heading">
+                                        @(_result.Passed ? "🎉 Congratulations!" : "📚 Keep Learning!")
+                                    </h4>
+                                    <p class="mb-0">
+                                        @if (_result.Passed)
+                                        {
+                                            <span>You passed the quiz! You scored @_result.Score.ToString("F1")% (Passing score: @_quiz?.PassingScore%)</span>
+                                        }
+                                        else
+                                        {
+                                            <span>You scored @_result.Score.ToString("F1")%. The passing score is @_quiz?.PassingScore%. Don't give up, try again!</span>
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row text-center mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">Total Score</h5>
+                                        <h2 class="mb-0">@_result.Score.ToString("F1")%</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">Points Earned</h5>
+                                        <h2 class="mb-0">@_result.TotalPointsEarned / @_result.TotalPointsPossible</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="text-muted">Correct Answers</h5>
+                                        <h2 class="mb-0">@_result.QuestionResults.Count(q => q.IsCorrect) / @_result.QuestionResults.Count</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4 class="mb-3">Question Review</h4>
+
+                        @foreach (var questionResult in _result.QuestionResults)
+                        {
+                            <div class="card mb-3 @(questionResult.IsCorrect ? "border-success" : "border-danger")">
+                                <div class="card-header @(questionResult.IsCorrect ? "bg-success bg-opacity-10" : "bg-danger bg-opacity-10")">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">
+                                            @if (questionResult.IsCorrect)
+                                            {
+                                                <span class="badge bg-success me-2">✓ Correct</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger me-2">✗ Incorrect</span>
+                                            }
+                                            @questionResult.QuestionText
+                                        </h6>
+                                        <span class="badge bg-secondary">@questionResult.PointsEarned / @questionResult.PointsPossible pts</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    @if (questionResult.QuestionType == "UserShortAnwswer" && !string.IsNullOrWhiteSpace(questionResult.UserTextAnswer))
+                                    {
+                                        <div class="alert alert-secondary mb-3">
+                                            <strong>Your Answer:</strong>
+                                            <div class="mt-1">@questionResult.UserTextAnswer</div>
+                                        </div>
+                                    }
+
+                                    <div class="list-group">
+                                        @foreach (var answer in questionResult.AnswerOptions)
+                                        {
+                                            <div class="list-group-item @GetAnswerResultClass(answer)">
+                                                <div class="d-flex align-items-center">
+                                                    @if (answer.IsCorrect && answer.WasSelected)
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                    }
+                                                    else if (answer.IsCorrect && !answer.WasSelected)
+                                                    {
+                                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                                    }
+                                                    else if (!answer.IsCorrect && answer.WasSelected)
+                                                    {
+                                                        <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-circle text-muted me-2"></i>
+                                                    }
+                                                    <span>@answer.OptionText</span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(questionResult.Explanation))
+                                    {
+                                        <div class="alert alert-info mt-3 mb-0">
+                                            <strong>Explanation:</strong> @questionResult.Explanation
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button class="btn btn-success btn-lg" @onclick="RetakeQuiz">
+                                <i class="bi bi-arrow-clockwise"></i> Retake Quiz
+                            </button>
+                            <button class="btn btn-outline-primary btn-lg" @onclick="@(() => Navigation.NavigateTo("/"))">
+                                <i class="bi bi-house-door"></i> Back to Home
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int QuizId { get; set; }
+
+    private Dentor.Academy.Web.Services.QuizDisplayDto? _quiz;
+    private Dentor.Academy.Web.Services.QuizResultDto? _result;
+    
+    // Participant info
+    private string _fullName = string.Empty;
+    private string _email = string.Empty;
+    private bool _showValidation = false;
+    private bool _showExplanationsImmediately = false;
+    
+    // Quiz state
+    private bool _hasStarted = false;
+    private bool _isCompleted = false;
+    private bool _isStarting = false;
+    private bool _isSubmitting = false;
+    private bool _showSubmitModal = false;
+    private int _quizAttemptId;
+    private int _currentQuestionIndex = 0;
+    
+    // Answer tracking
+    private Dictionary<int, List<int>> _userAnswers = new();
+    private bool _showCurrentExplanation = false;
+    private Dictionary<int, string> _userTextAnswers = new();
+    
+    // Computed properties
+    private Dentor.Academy.Web.Services.QuestionDisplayDto? CurrentQuestion => _quiz?.Questions.ElementAtOrDefault(_currentQuestionIndex);
+    private int AnsweredCount => (_quiz == null) ? 0 : _quiz.Questions.Count(q => IsQuestionAnsweredInternal(q.QuestionId));
+    private int UnansweredCount => (_quiz?.TotalQuestions ?? 0) - AnsweredCount;
+    private double ProgressPercentage => _quiz?.TotalQuestions > 0 ? (double)(_currentQuestionIndex + 1) / _quiz.TotalQuestions * 100 : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _quiz = await QuizService.GetQuizForDisplayAsync(QuizId);
+        
+        if (_quiz == null)
+        {
+            // Quiz not found, redirect to home
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private bool IsValidEmail(string address)
+    {
+        if (string.IsNullOrWhiteSpace(address)) return false;
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(address);
+            return addr.Address == address;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task StartQuiz()
+    {
+        _showValidation = true;
+        
+        if (string.IsNullOrWhiteSpace(_fullName) || !IsValidEmail(_email))
+        {
+            return;
+        }
+
+        _isStarting = true;
+        
+        try
+        {
+            _quizAttemptId = await QuizService.StartQuizAttemptAsync(QuizId, _email, _fullName);
+            _hasStarted = true;
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error starting quiz: {ex.Message}");
+        }
+        finally
+        {
+            _isStarting = false;
+        }
+    }
+
+    private bool IsOptionSelected(int optionId)
+    {
+        if (CurrentQuestion == null) return false;
+        return _userAnswers.ContainsKey(CurrentQuestion.QuestionId) && 
+               _userAnswers[CurrentQuestion.QuestionId].Contains(optionId);
+    }
+
+    private async Task SelectSingleOption(int optionId)
+    {
+        if (CurrentQuestion == null) return;
+        
+        _userAnswers[CurrentQuestion.QuestionId] = new List<int> { optionId };
+        await SaveCurrentAnswer();
+    }
+
+    private async Task ToggleMultipleOption(int optionId)
+    {
+        if (CurrentQuestion == null) return;
+        
+        if (!_userAnswers.ContainsKey(CurrentQuestion.QuestionId))
+        {
+            _userAnswers[CurrentQuestion.QuestionId] = new List<int>();
+        }
+
+        if (_userAnswers[CurrentQuestion.QuestionId].Contains(optionId))
+        {
+            _userAnswers[CurrentQuestion.QuestionId].Remove(optionId);
+        }
+        else
+        {
+            _userAnswers[CurrentQuestion.QuestionId].Add(optionId);
+        }
+
+        await SaveCurrentAnswer();
+    }
+
+    private async Task SaveCurrentAnswer()
+    {
+        if (CurrentQuestion == null) return;
+
+        var answer = new Dentor.Academy.Web.Services.QuestionAnswerDto
+        {
+            QuestionId = CurrentQuestion.QuestionId,
+            SelectedAnswerOptionIds = _userAnswers.ContainsKey(CurrentQuestion.QuestionId) ? _userAnswers[CurrentQuestion.QuestionId] : new List<int>(),
+            ShortTextAnswer = _userTextAnswers.TryGetValue(CurrentQuestion.QuestionId, out var txt) ? txt : null
+        };
+
+        await QuizService.SaveQuestionAnswerAsync(_quizAttemptId, answer);
+    }
+
+    // Helper to read current short text value
+    private string GetCurrentShortText()
+    {
+        if (CurrentQuestion == null) return string.Empty;
+        return _userTextAnswers.TryGetValue(CurrentQuestion.QuestionId, out var txt) ? txt : string.Empty;
+    }
+
+    private async Task OnShortTextChanged(ChangeEventArgs e)
+    {
+        if (CurrentQuestion == null) return;
+        var val = e.Value?.ToString() ?? string.Empty;
+
+        // Cap at 500 chars
+        if (val.Length > 500)
+        {
+            val = val.Substring(0, 500);
+        }
+
+        _userTextAnswers[CurrentQuestion.QuestionId] = val;
+        await SaveCurrentAnswer();
+    }
+
+    private bool IsQuestionAnswered()
+    {
+        if (CurrentQuestion == null) return false;
+        return IsQuestionAnsweredInternal(CurrentQuestion.QuestionId);
+    }
+
+    private bool IsQuestionAnsweredInternal(int questionId)
+    {
+        if (_quiz == null) return false;
+        var q = _quiz.Questions.FirstOrDefault(x => x.QuestionId == questionId);
+        if (q == null) return false;
+
+        if (q.QuestionType == "UserShortAnwswer")
+        {
+            return _userTextAnswers.TryGetValue(questionId, out var txt) && !string.IsNullOrWhiteSpace(txt);
+        }
+
+        return _userAnswers.TryGetValue(questionId, out var selected) && selected.Count > 0;
+    }
+
+    private bool HasCurrentQuestionExplanation()
+    {
+        return !string.IsNullOrWhiteSpace(CurrentQuestion?.Explanation);
+    }
+
+    private void ShowExplanation()
+    {
+        _showCurrentExplanation = true;
+    }
+
+    private void HideExplanation()
+    {
+        _showCurrentExplanation = false;
+    }
+
+    private void PreviousQuestion()
+    {
+        if (_currentQuestionIndex > 0)
+        {
+            _currentQuestionIndex--;
+            _showCurrentExplanation = false;
+        }
+    }
+
+    private void NextQuestion()
+    {
+        if (_quiz == null) return;
+        if (_currentQuestionIndex < _quiz.TotalQuestions - 1)
+        {
+            _currentQuestionIndex++;
+            _showCurrentExplanation = false;
+        }
+    }
+
+    private void ShowSubmitConfirmation()
+    {
+        _showSubmitModal = true;
+    }
+
+    private async Task SubmitQuiz()
+    {
+        if (_isSubmitting) return;
+        _isSubmitting = true;
+        try
+        {
+            var result = await QuizService.SubmitQuizAsync(_quizAttemptId);
+            _result = result;
+            _isCompleted = true;
+            _showSubmitModal = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting quiz: {ex.Message}");
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task RetakeQuiz()
+    {
+        // Reset state for a fresh attempt; keep participant info
+        _userAnswers.Clear();
+        _userTextAnswers.Clear();
+        _currentQuestionIndex = 0;
+        _showCurrentExplanation = false;
+        _isCompleted = false;
+        _hasStarted = false;
+        _result = null;
+        _quizAttemptId = 0;
+
+        if (_quiz != null && !string.IsNullOrWhiteSpace(_email) && !string.IsNullOrWhiteSpace(_fullName))
+        {
+            try
+            {
+                _quizAttemptId = await QuizService.StartQuizAttemptAsync(_quiz.QuizId, _email, _fullName);
+                _hasStarted = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error starting new attempt: {ex.Message}");
+            }
+        }
+    }
+
+    private string GetAnswerResultClass(Dentor.Academy.Web.Services.AnswerResultDto answer)
+    {
+        if (answer.IsCorrect && answer.WasSelected)
+            return "list-group-item-success";
+        if (answer.IsCorrect && !answer.WasSelected)
+            return "list-group-item-success";
+        if (!answer.IsCorrect && answer.WasSelected)
+            return "list-group-item-danger";
+        return string.Empty;
+    }
+}

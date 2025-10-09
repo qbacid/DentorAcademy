@@ -1,0 +1,125 @@
+/* Minimal vertical sidebar navigation */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #f8f9fc; /* light neutral */
+    border-right: 1px solid #e2e6ef;
+    box-sizing: border-box;
+    padding: 0;
+}
+
+/* Hamburger button - hidden on desktop */
+.hamburger-btn {
+    display: none;
+    background: none;
+    border: none;
+    padding: 0.75rem;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.hamburger-icon {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 24px;
+}
+
+.hamburger-icon span {
+    display: block;
+    height: 3px;
+    background: #fff;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.sidebar-nav .brand {
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: .5px;
+    padding: 1rem 1rem .85rem 1rem;
+    /*background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);*/
+    color: #fff;
+    margin: 0 0 .5rem 0;
+}
+
+.sidebar-nav .links {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: 0 .5rem 1rem .5rem;
+}
+
+.sidebar-nav .links a, .sidebar-nav .links ::deep a {
+    text-decoration: none;
+    color: #444;
+    font-size: .95rem;
+    padding: .55rem .75rem;
+    border-radius: 8px;
+    line-height: 1.2;
+    position: relative;
+    transition: background .15s ease, color .15s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-nav .links a i {
+    font-size: 1.1rem;
+}
+
+.sidebar-nav .links a:hover, .sidebar-nav .links ::deep a:hover {
+    background: #eceff7;
+    color: #222;
+}
+
+.sidebar-nav .links a.active, .sidebar-nav .links ::deep a.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Focus accessibility */
+.sidebar-nav .links a:focus-visible, .sidebar-nav .links ::deep a:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Mobile responsive - hamburger menu */
+@media (max-width: 899px) {
+    .sidebar-nav {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Show hamburger button on mobile */
+    .hamburger-btn {
+        display: block;
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+    
+    /* When menu is open */
+    .sidebar.open .sidebar-nav {
+        left: 0;
+    }
+    
+    .sidebar-nav .brand {
+        padding: 1rem 3.5rem 1rem 1rem;
+    }
+}
+
+@media (min-width: 900px) {
+    .sidebar-nav {
+        position: static;
+        width: auto;
+    }
+}
