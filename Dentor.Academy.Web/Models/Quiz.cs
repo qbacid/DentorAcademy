@@ -22,6 +22,10 @@ public class Quiz
     [Column("description")]
     public string? Description { get; set; }
 
+    [MaxLength(100)]
+    [Column("category")]
+    public string? Category { get; set; }
+
     [Column("passing_score")]
     public decimal PassingScore { get; set; } = 70.0m; // Percentage
 
@@ -41,4 +45,3 @@ public class Quiz
     public ICollection<Question> Questions { get; set; } = new List<Question>();
     public ICollection<QuizAttempt> QuizAttempts { get; set; } = new List<QuizAttempt>();
 }
-

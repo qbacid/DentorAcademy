@@ -1,25 +1,9 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="page layout-with-sidebar">
-    <!-- Mobile top bar with hamburger button -->
-    <div class="mobile-topbar">
-        <button class="mobile-hamburger" @onclick="ToggleMenu" aria-label="Toggle menu">
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-            <span class="hamburger-line"></span>
-        </button>
-        <span class="mobile-title">Luxadent Pro</span>
-    </div>
-
-    <aside class="sidebar @(menuOpen ? "open" : "")">
-        <NavMenu OnMenuToggle="ToggleMenu" IsOpen="menuOpen" />
+    <aside class="sidebar">
+        <NavMenu />
     </aside>
-
-    <!-- Mobile overlay -->
-    @if (menuOpen)
-    {
-        <div class="sidebar-overlay" @onclick="CloseMenu"></div>
-    }
 
     <main>
         <article class="content">
@@ -33,17 +17,3 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
-
-@code {
-    private bool menuOpen = false;
-
-    private void ToggleMenu()
-    {
-        menuOpen = !menuOpen;
-    }
-
-    private void CloseMenu()
-    {
-        menuOpen = false;
-    }
-}

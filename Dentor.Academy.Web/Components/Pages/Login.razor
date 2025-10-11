@@ -1,0 +1,103 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Nav
+
+<PageTitle>Sign in</PageTitle>
+
+<div class="container mt-5" style="max-width: 480px;">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h3 class="mb-3">Sign in</h3>
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert alert-danger">@error</div>
+            }
+            <EditForm Model="model" OnValidSubmit="HandleLogin" FormName="LoginForm">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <InputText @bind-Value="model.Email" class="form-control" />
+                    <ValidationMessage For="() => model.Email" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <InputText @bind-Value="model.Password" type="password" class="form-control" />
+                    <ValidationMessage For="() => model.Password" />
+                </div>
+                <div class="form-check mb-3">
+                    <InputCheckbox @bind-Value="model.RememberMe" class="form-check-input" id="rememberMe" />
+                    <label class="form-check-label" for="rememberMe">Remember me</label>
+                </div>
+                <button class="btn btn-primary w-100" type="submit" disabled="@busy">
+                    @(busy ? "Signing in..." : "Sign in")
+                </button>
+            </EditForm>
+            <div class="mt-3 text-center">
+                <span class="text-muted">Don't have an account?</span>
+                <a href="/register">Register</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private LoginModel model { get; set; } = new();
+    
+    private bool busy;
+    private string? error;
+
+    private async Task HandleLogin()
+    {
+        busy = true;
+        error = null;
+        
+        var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: true);
+        if (result.Succeeded)
+        {
+            var returnUrl = GetReturnUrl();
+            Nav.NavigateTo(string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl, forceLoad: true);
+            return;
+        }
+        
+        if (result.IsLockedOut)
+        {
+            error = "Account locked. Try again later.";
+        }
+        else
+        {
+            error = "Invalid email or password.";
+        }
+        
+        busy = false;
+    }
+
+    private string? GetReturnUrl()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var parsed = QueryHelpers.ParseQuery(uri.Query);
+        if (parsed.TryGetValue("ReturnUrl", out var values1) && values1.Count > 0)
+        {
+            return values1.First();
+        }
+        if (parsed.TryGetValue("returnUrl", out var values2) && values2.Count > 0)
+        {
+            return values2.First();
+        }
+        return null;
+    }
+
+    public class LoginModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+}

@@ -1,6 +1,6 @@
 @page "/quizzes"
 @using Dentor.Academy.Web.Data
-@using Dentor.Academy.Web.Models
+@using Dentor.Academy.Web.DTOs
 @using Microsoft.EntityFrameworkCore
 @inject QuizDbContext DbContext
 @inject NavigationManager Navigation
@@ -11,68 +11,38 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h2 class="m-0">Available Quizzes</h2>
-        <a href="/quiz-import" class="btn btn-primary">
-            Import New Quiz
-        </a>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <a href="/quiz-import" class="btn btn-secondary" style="border-radius: 8px">
+                    Import New Quiz
+                </a>
+            </Authorized>
+        </AuthorizeView>
     </div>
 
     @if (quizzes == null)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3 text-muted">Loading quizzes...</p>
-        </div>
+        <LoadingSpinner Message="Loading quizzes..." />
     }
     else if (!quizzes.Any())
     {
-        <div class="card border-0 shadow-sm text-center p-5 bg-light">
-            <h4 class="mb-3">No Quizzes Available</h4>
-            <p class="text-muted mb-4">Import a quiz to get started.</p>
-            <a href="/quiz-import" class="btn btn-primary">Import Quiz</a>
-        </div>
+        <EmptyState 
+            Title="No Quizzes Available"
+            Message="Import a quiz to get started."
+            IconClass="bi bi-inbox"
+            ShowAction="true"
+            ActionText="Import Quiz"
+            ActionUrl="/quiz-import"
+            RequiredRole="Admin" />
     }
     else
     {
-        <div class="row g-4">
-            @foreach (var quiz in quizzes)
-            {
-                <div class="col-sm-6 col-lg-4">
-                    <div class="quiz-list-card" role="button" tabindex="0"
-                         @onclick="() => StartQuiz(quiz.Id)"
-                         @onkeydown="(e) => CardKeyDown(e, quiz.Id)">
-                        <div class="qlc-header" title="@quiz.Title">@quiz.Title</div>
-                        <div class="qlc-body">
-                            @if (!string.IsNullOrWhiteSpace(quiz.Description))
-                            {
-                                <p class="qlc-desc">@quiz.Description</p>
-                            }
-                            else
-                            {
-                                <p class="qlc-desc qlc-desc-empty fst-italic text-muted">No description provided.</p>
-                            }
-                            <div class="qlc-meta text-muted">
-                                <span>@quiz.QuestionCount question@(quiz.QuestionCount == 1 ? "" : "s")</span>
-                                @if (quiz.TimeLimitMinutes.HasValue)
-                                {
-                                    <span>&bull; @quiz.TimeLimitMinutes min</span>
-                                }
-                                <span>&bull; Pass @quiz.PassingScore%</span>
-                            </div>
-                        </div>
-                        <div class="qlc-footer">
-                            <span class="qlc-action text-primary">Start &rsaquo;</span>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
+        <QuizCardGrid Quizzes="@quizzes" OnQuizSelected="@StartQuiz" />
     }
 </div>
 
 @code {
-    private List<QuizListItem>? quizzes;
+    private List<QuizCardDto>? quizzes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,11 +53,12 @@
     {
         quizzes = await DbContext.Quizzes
             .Where(q => q.IsActive)
-            .Select(q => new QuizListItem
+            .Select(q => new QuizCardDto
             {
                 Id = q.Id,
                 Title = q.Title,
                 Description = q.Description,
+                Category = q.Category,
                 PassingScore = q.PassingScore,
                 TimeLimitMinutes = q.TimeLimitMinutes,
                 QuestionCount = q.Questions.Count
@@ -99,23 +70,5 @@
     private void StartQuiz(int quizId)
     {
         Navigation.NavigateTo($"/quiz/{quizId}");
-    }
-
-    private void CardKeyDown(KeyboardEventArgs e, int quizId)
-    {
-        if (e.Key == "Enter" || e.Key == " ")
-        {
-            StartQuiz(quizId);
-        }
-    }
-
-    private class QuizListItem
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public decimal PassingScore { get; set; }
-        public int? TimeLimitMinutes { get; set; }
-        public int QuestionCount { get; set; }
     }
 }

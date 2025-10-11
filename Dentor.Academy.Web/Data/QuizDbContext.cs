@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Dentor.Academy.Web.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace Dentor.Academy.Web.Data;
 
 /// <summary>
 /// Database context for the Quiz system optimized for PostgreSQL
 /// </summary>
-public class QuizDbContext : DbContext
+public class QuizDbContext : IdentityDbContext<ApplicationUser>
 {
     public QuizDbContext(DbContextOptions<QuizDbContext> options) : base(options)
     {

@@ -1,0 +1,130 @@
+@* Reusable Empty State Component *@
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-5">
+                @if (!string.IsNullOrWhiteSpace(IconClass))
+                {
+                    <div class="mb-4">
+                        <i class="@IconClass" style="font-size: 4rem; color: #dee2e6;"></i>
+                    </div>
+                }
+                <h3 class="mb-3">@Title</h3>
+                <p class="text-muted mb-4">@Message</p>
+                
+                @if (ShowAction)
+                {
+                    @if (string.IsNullOrWhiteSpace(RequiredRole))
+                    {
+                        <!-- No authentication required - show action to everyone -->
+                        @if (!string.IsNullOrWhiteSpace(ActionUrl))
+                        {
+                            <a href="@ActionUrl" class="btn btn-primary btn-lg">
+                                @if (!string.IsNullOrWhiteSpace(ActionIconClass))
+                                {
+                                    <i class="@ActionIconClass"></i>
+                                }
+                                @ActionText
+                            </a>
+                        }
+                        else if (OnAction.HasDelegate)
+                        {
+                            <button class="btn btn-primary btn-lg" @onclick="OnAction">
+                                @if (!string.IsNullOrWhiteSpace(ActionIconClass))
+                                {
+                                    <i class="@ActionIconClass"></i>
+                                }
+                                @ActionText
+                            </button>
+                        }
+                    }
+                    else
+                    {
+                        <!-- Authentication required - use AuthorizeView with role -->
+                        <AuthorizeView Roles="@RequiredRole">
+                            <Authorized>
+                                @if (!string.IsNullOrWhiteSpace(ActionUrl))
+                                {
+                                    <a href="@ActionUrl" class="btn btn-primary btn-lg">
+                                        @if (!string.IsNullOrWhiteSpace(ActionIconClass))
+                                        {
+                                            <i class="@ActionIconClass"></i>
+                                        }
+                                        @ActionText
+                                    </a>
+                                }
+                                else if (OnAction.HasDelegate)
+                                {
+                                    <button class="btn btn-primary btn-lg" @onclick="OnAction">
+                                        @if (!string.IsNullOrWhiteSpace(ActionIconClass))
+                                        {
+                                            <i class="@ActionIconClass"></i>
+                                        }
+                                        @ActionText
+                                    </button>
+                                }
+                            </Authorized>
+                            <NotAuthorized>
+                                @if (ShowActionForUnauthorized && !string.IsNullOrWhiteSpace(ActionUrl))
+                                {
+                                    <a href="@ActionUrl" class="btn btn-primary btn-lg">
+                                        @if (!string.IsNullOrWhiteSpace(ActionIconClass))
+                                        {
+                                            <i class="@ActionIconClass"></i>
+                                        }
+                                        @ActionText
+                                    </a>
+                                }
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "No Items Available";
+
+    [Parameter]
+    public string Message { get; set; } = "There are no items to display at this time.";
+
+    [Parameter]
+    public string IconClass { get; set; } = "bi bi-inbox";
+
+    [Parameter]
+    public bool ShowAction { get; set; } = false;
+
+    [Parameter]
+    public string ActionText { get; set; } = "Take Action";
+
+    [Parameter]
+    public string? ActionIconClass { get; set; }
+
+    [Parameter]
+    public string? ActionUrl { get; set; }
+
+    [Parameter]
+    public EventCallback OnAction { get; set; }
+
+    /// <summary>
+    /// Optional: Role required to see the action button. 
+    /// If empty/null, the action is visible to all users (no authentication required).
+    /// Example: "Admin" or "Admin,Manager" for multiple roles
+    /// </summary>
+    [Parameter]
+    public string? RequiredRole { get; set; }
+
+    /// <summary>
+    /// If true, shows the action button to unauthorized users when a RequiredRole is specified.
+    /// Useful for showing "Sign in to continue" type actions.
+    /// </summary>
+    [Parameter]
+    public bool ShowActionForUnauthorized { get; set; } = false;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+}

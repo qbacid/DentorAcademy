@@ -1,0 +1,57 @@
+@using Dentor.Academy.Web.DTOs
+@inject NavigationManager Navigation
+
+<div class="row g-4">
+    @foreach (var quiz in Quizzes)
+    {
+        <div class="col-sm-6 col-lg-4">
+            <div class="quiz-list-card" role="button" tabindex="0"
+                 @onclick="() => OnQuizSelected.InvokeAsync(quiz.Id)"
+                 @onkeydown="(e) => CardKeyDown(e, quiz.Id)">
+                <div class="qlc-header" title="@quiz.Category">@(quiz.Category ?? @quiz.Title)</div>
+                <div class="qlc-body">
+                    <h6 class="qlc-title">@quiz.Title</h6>
+                    @if (!string.IsNullOrWhiteSpace(quiz.Description))
+                    {
+                        <p class="qlc-desc">@quiz.Description</p>
+                    }
+                    else
+                    {
+                        <p class="qlc-desc qlc-desc-empty fst-italic text-muted">No description provided.</p>
+                    }
+                    <div class="qlc-meta text-muted">
+                        <span>@quiz.QuestionCount question@(quiz.QuestionCount == 1 ? "" : "s")</span>
+                        @if (quiz.TimeLimitMinutes.HasValue)
+                        {
+                            <span>&bull; @quiz.TimeLimitMinutes min</span>
+                        }
+                        <span>&bull; Pass @quiz.PassingScore%</span>
+                    </div>
+                </div>
+                <div class="qlc-footer">
+                    <span class="qlc-action text-primary">Start &rsaquo;</span>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<QuizCardDto> Quizzes { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<int> OnQuizSelected { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private void CardKeyDown(KeyboardEventArgs e, int quizId)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            OnQuizSelected.InvokeAsync(quizId);
+        }
+    }
+}
+

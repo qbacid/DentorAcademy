@@ -14,7 +14,7 @@
 
 /* Quiz cards */
 .quiz-card {
-    border-radius: 24px;
+    border-radius: 25px;
     border: 1px solid #e5e9f3;
     overflow: hidden;
     cursor: pointer;

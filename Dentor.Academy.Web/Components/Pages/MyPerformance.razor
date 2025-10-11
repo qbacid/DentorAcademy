@@ -1,0 +1,267 @@
+@page "/my-performance"
+@using Dentor.Academy.Web.DTOs
+@using Dentor.Academy.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UserPerformanceService PerformanceService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>My Performance</PageTitle>
+
+<div class="container mt-4">
+    <AuthorizeView>
+        <Authorized>
+            @if (isLoading)
+            {
+                <LoadingSpinner Message="Loading your performance data..." />
+            }
+            else if (performanceSummary == null || performanceSummary.TotalQuizzesTaken == 0)
+            {
+                <EmptyState 
+                    Title="No Performance Data Yet"
+                    Message="Take some quizzes to see your performance statistics and insights."
+                    IconClass="bi bi-graph-up"
+                    ShowAction="true"
+                    ActionText="Browse Quizzes"
+                    ActionUrl="/quizzes" />
+            }
+            else
+            {
+                <div class="mb-4">
+                    <h2 class="mb-2">My Performance Dashboard</h2>
+                    <p class="text-muted">Track your progress and identify areas for improvement</p>
+                </div>
+
+                <!-- Overall Stats -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card stats-card">
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <div class="stat-item">
+                                            <h3 class="text-primary mb-1">@performanceSummary.TotalQuizzesTaken</h3>
+                                            <p class="text-muted mb-0">Quizzes Taken</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="stat-item">
+                                            <h3 class="text-primary mb-1">@performanceSummary.TotalQuestionsAnswered</h3>
+                                            <p class="text-muted mb-0">Questions Answered</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="stat-item">
+                                            <h3 class="text-primary mb-1">@($"{performanceSummary.OverallAverageScore:F0}%")</h3>
+                                            <p class="text-muted mb-0">Overall Average</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="stat-item">
+                                            <h3 class="text-primary mb-1">@performanceSummary.CategoryPerformances.Count</h3>
+                                            <p class="text-muted mb-0">Categories Explored</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strengths and Improvements -->
+                <div class="row mb-4">
+                    @if (performanceSummary.StrengthAreas.Any())
+                    {
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success bg-opacity-10">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-trophy-fill text-success"></i> Your Strengths
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted mb-3">Categories where you excel (80%+)</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var strength in performanceSummary.StrengthAreas)
+                                        {
+                                            <span class="badge bg-success bg-opacity-25 text-success px-3 py-2">
+                                                <i class="bi bi-star-fill"></i> @strength
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (performanceSummary.ImprovementAreas.Any())
+                    {
+                        <div class="col-md-6">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning bg-opacity-10">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-lightbulb-fill text-warning"></i> Focus Areas
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted mb-3">Categories needing more practice (&lt;70%)</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var area in performanceSummary.ImprovementAreas)
+                                        {
+                                            <span class="badge bg-warning bg-opacity-25 text-warning px-3 py-2">
+                                                <i class="bi bi-arrow-up-circle"></i> @area
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Category Performance Details -->
+                <div class="mb-4">
+                    <h4 class="mb-3">Performance by Category</h4>
+                    <div class="row g-3">
+                        @foreach (var category in performanceSummary.CategoryPerformances)
+                        {
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card h-100 @GetCategoryCardClass(category)">
+                                    <div class="card-body">
+                                        <h5 class="card-title">@category.Category</h5>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div>
+                                                <div class="h2 mb-0 @GetScoreColorClass(category.AverageScore)">
+                                                    @($"{category.AverageScore:F0}%")
+                                                </div>
+                                                <small class="text-muted">Average Score</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge @GetPerformanceBadgeClass(category.PerformanceLevel)">
+                                                    @category.PerformanceLevel
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="progress mb-3" style="height: 8px;">
+                                            <div class="progress-bar @GetProgressBarClass(category.AverageScore)" 
+                                                 role="progressbar" 
+                                                 style="width: @($"{category.AverageScore}%")"
+                                                 aria-valuenow="@category.AverageScore" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                            </div>
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span><i class="bi bi-journal-check"></i> Quizzes:</span>
+                                                <strong>@category.QuizzesTaken</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span><i class="bi bi-check-circle"></i> Correct:</span>
+                                                <strong>@category.CorrectAnswers/@category.QuestionsAnswered</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span><i class="bi bi-trophy"></i> Best:</span>
+                                                <strong>@($"{category.BestScore:F0}%")</strong>
+                                            </div>
+                                            @if (category.LastAttemptDate.HasValue)
+                                            {
+                                                <div class="d-flex justify-content-between">
+                                                    <span><i class="bi bi-clock"></i> Last:</span>
+                                                    <strong>@category.LastAttemptDate.Value.ToString("MMM dd, yyyy")</strong>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <div class="alert alert-info">
+                <h4><i class="bi bi-info-circle"></i> Sign In Required</h4>
+                <p class="mb-0">Please <a href="/login">sign in</a> to view your performance dashboard.</p>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    private bool isLoading = true;
+    private UserPerformanceSummaryDto? performanceSummary;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var email = user.Identity.Name ?? "";
+            currentUserId = $"{email}|{email}"; // Format: email|fullname
+            
+            try
+            {
+                performanceSummary = await PerformanceService.GetUserPerformanceSummaryAsync(currentUserId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading performance: {ex.Message}");
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private string GetCategoryCardClass(CategoryPerformanceDto category)
+    {
+        if (category.IsStrength) return "border-success";
+        if (category.NeedsImprovement) return "border-warning";
+        return "";
+    }
+
+    private string GetScoreColorClass(decimal score)
+    {
+        return score switch
+        {
+            >= 90 => "text-success",
+            >= 80 => "text-info",
+            >= 70 => "text-primary",
+            >= 60 => "text-warning",
+            _ => "text-danger"
+        };
+    }
+
+    private string GetProgressBarClass(decimal score)
+    {
+        return score switch
+        {
+            >= 90 => "bg-success",
+            >= 80 => "bg-info",
+            >= 70 => "bg-primary",
+            >= 60 => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+
+    private string GetPerformanceBadgeClass(string level)
+    {
+        return level switch
+        {
+            "Excellent" => "bg-success",
+            "Very Good" => "bg-info",
+            "Good" => "bg-primary",
+            "Fair" => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+}
+
