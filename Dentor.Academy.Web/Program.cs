@@ -36,11 +36,12 @@ builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
     {
         options.User.RequireUniqueEmail = true;
+        // Simple password policy
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequiredLength = 8;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 6;
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<QuizDbContext>()
@@ -69,6 +70,7 @@ builder.Services.AddScoped<QuizScoringService>();
 builder.Services.AddScoped<QuizImportService>();
 builder.Services.AddScoped<QuizTakingService>();
 builder.Services.AddScoped<UserPerformanceService>();
+builder.Services.AddScoped<UserManagementService>();
 
 var app = builder.Build();
 
@@ -100,6 +102,16 @@ using (var scope = app.Services.CreateScope())
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
+    // Ensure all roles exist
+    string[] roles = { "Admin", "Student", "Teacher", "Authenticated User", "Course Manager" };
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+
     var adminEmail = builder.Configuration["Admin:Email"];
     var adminPassword = builder.Configuration["Admin:Password"];
 
@@ -108,10 +120,6 @@ using (var scope = app.Services.CreateScope())
         throw new InvalidOperationException("Admin credentials must be configured in appsettings.json");
     }
 
-    if (!await roleManager.RoleExistsAsync("Admin"))
-    {
-        await roleManager.CreateAsync(new IdentityRole("Admin"));
-    }
 
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser == null)
