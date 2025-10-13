@@ -1,8 +1,9 @@
 @page "/my-performance"
-@using Dentor.Academy.Web.DTOs
-@using Dentor.Academy.Web.Services
-@using Microsoft.AspNetCore.Components.Authorization
-@inject UserPerformanceService PerformanceService
+
+@using Dentor.Academy.Web.Interfaces
+@using Dentor.Academy.Web.DTOs.User
+
+@inject IUserPerformanceService PerformanceService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @rendermode InteractiveServer
@@ -134,7 +135,7 @@
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <div>
                                                 <div class="h2 mb-0 @GetScoreColorClass(category.AverageScore)">
-                                                    @($"{category.AverageScore:F0}%")
+                                                    @category.AverageScore.ToString("F0")%
                                                 </div>
                                                 <small class="text-muted">Average Score</small>
                                             </div>
@@ -148,8 +149,8 @@
                                         <div class="progress mb-3" style="height: 8px;">
                                             <div class="progress-bar @GetProgressBarClass(category.AverageScore)" 
                                                  role="progressbar" 
-                                                 style="width: @($"{category.AverageScore}%")"
-                                                 aria-valuenow="@category.AverageScore" 
+                                                 style="width: @(category.AverageScore.ToString("F0"))%"
+                                                 aria-valuenow="@category.AverageScore.ToString("F0")" 
                                                  aria-valuemin="0" 
                                                  aria-valuemax="100">
                                             </div>
@@ -195,7 +196,7 @@
 
 @code {
     private bool isLoading = true;
-    private UserPerformanceSummaryDto? performanceSummary;
+    private UserPerformanceDto? performanceSummary;
     private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
@@ -210,7 +211,7 @@
             
             try
             {
-                performanceSummary = await PerformanceService.GetUserPerformanceSummaryAsync(currentUserId);
+                performanceSummary = await PerformanceService.GetUserPerformanceAsync(currentUserId);
             }
             catch (Exception ex)
             {
@@ -264,4 +265,3 @@
         };
     }
 }
-

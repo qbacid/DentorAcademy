@@ -3,6 +3,7 @@ using System;
 using Dentor.Academy.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dentor.Academy.Web.Migrations
 {
     [DbContext(typeof(QuizDbContext))]
-    partial class QuizDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251012065736_AddCoursePlatformEntities")]
+    partial class AddCoursePlatformEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -214,14 +217,6 @@ namespace Dentor.Academy.Web.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_published");
 
-                    b.Property<string>("LearningObjectives")
-                        .HasColumnType("text")
-                        .HasColumnName("learning_objectives");
-
-                    b.Property<string>("Prerequisites")
-                        .HasColumnType("text")
-                        .HasColumnName("prerequisites");
-
                     b.Property<decimal>("Price")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
@@ -235,10 +230,6 @@ namespace Dentor.Academy.Web.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("short_description");
-
-                    b.Property<string>("Tags")
-                        .HasColumnType("text")
-                        .HasColumnName("tags");
 
                     b.Property<string>("ThumbnailUrl")
                         .HasMaxLength(500)
@@ -261,9 +252,6 @@ namespace Dentor.Academy.Web.Migrations
                     b.HasIndex("Category")
                         .HasDatabaseName("ix_courses_category");
 
-                    b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_courses_category_id");
-
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_courses_created_at");
 
@@ -274,201 +262,6 @@ namespace Dentor.Academy.Web.Migrations
                         .HasDatabaseName("ix_courses_is_published");
 
                     b.ToTable("courses", (string)null);
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseCategory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Color")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("color");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("display_order");
-
-                    b.Property<string>("IconClass")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("icon_class");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("name");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_course_categories");
-
-                    b.HasIndex("DisplayOrder")
-                        .HasDatabaseName("ix_course_categories_display_order");
-
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("ix_course_categories_is_active");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("ix_course_categories_name");
-
-                    b.ToTable("course_categories", (string)null);
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseCertificate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CertificateNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("certificate_number");
-
-                    b.Property<string>("CertificatePdfBlobName")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("certificate_pdf_blob_name");
-
-                    b.Property<string>("CertificateUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("certificate_url");
-
-                    b.Property<DateTime>("CompletionDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completion_date");
-
-                    b.Property<int?>("CourseDurationHours")
-                        .HasColumnType("integer")
-                        .HasColumnName("course_duration_hours");
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
-                        .HasColumnName("course_id");
-
-                    b.Property<string>("CourseTitle")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("course_title");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int>("EnrollmentId")
-                        .HasColumnType("integer")
-                        .HasColumnName("enrollment_id");
-
-                    b.Property<string>("Grade")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("grade");
-
-                    b.Property<bool>("IsValid")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_valid");
-
-                    b.Property<DateTime>("IssuedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("issued_at");
-
-                    b.Property<DateTime?>("LastVerifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_verified_at");
-
-                    b.Property<string>("RevocationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("revocation_reason");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("revoked_at");
-
-                    b.Property<string>("RevokedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("revoked_by_user_id");
-
-                    b.Property<string>("StudentName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("student_name");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("user_id");
-
-                    b.Property<string>("VerificationCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("verification_code");
-
-                    b.Property<int>("VerifiedCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("verified_count");
-
-                    b.HasKey("Id")
-                        .HasName("pk_course_certificates");
-
-                    b.HasIndex("CertificateNumber")
-                        .IsUnique()
-                        .HasDatabaseName("ix_course_certificates_certificate_number");
-
-                    b.HasIndex("CourseId")
-                        .HasDatabaseName("ix_course_certificates_course_id");
-
-                    b.HasIndex("EnrollmentId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_course_certificates_enrollment_id");
-
-                    b.HasIndex("IssuedAt")
-                        .HasDatabaseName("ix_course_certificates_issued_at");
-
-                    b.HasIndex("RevokedByUserId")
-                        .HasDatabaseName("ix_course_certificates_revoked_by_user_id");
-
-                    b.HasIndex("UserId", "CourseId")
-                        .HasDatabaseName("ix_course_certificates_user_id_course_id");
-
-                    b.ToTable("course_certificates", (string)null);
                 });
 
             modelBuilder.Entity("Dentor.Academy.Web.Models.CourseContent", b =>
@@ -679,56 +472,6 @@ namespace Dentor.Academy.Web.Migrations
                         .HasDatabaseName("ix_course_enrollments_user_id_course_id");
 
                     b.ToTable("course_enrollments", (string)null);
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseInstructor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("assigned_at");
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
-                        .HasColumnName("course_id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("integer")
-                        .HasColumnName("order_index");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("role");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_course_instructors");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_course_instructors_user_id");
-
-                    b.HasIndex("CourseId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_course_instructors_course_id_user_id");
-
-                    b.ToTable("course_instructors", (string)null);
                 });
 
             modelBuilder.Entity("Dentor.Academy.Web.Models.CourseModule", b =>
@@ -946,94 +689,6 @@ namespace Dentor.Academy.Web.Migrations
                         .HasDatabaseName("ix_course_progress_user_id_course_content_id");
 
                     b.ToTable("course_progress", (string)null);
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseReview", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("approved_at");
-
-                    b.Property<string>("ApprovedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("approved_by_user_id");
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("integer")
-                        .HasColumnName("course_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int>("HelpfulCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("helpful_count");
-
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_approved");
-
-                    b.Property<bool>("IsFeatured")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_featured");
-
-                    b.Property<int>("Rating")
-                        .HasPrecision(3, 2)
-                        .HasColumnType("integer")
-                        .HasColumnName("rating");
-
-                    b.Property<string>("ReviewText")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("review_text");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("title");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_course_reviews");
-
-                    b.HasIndex("ApprovedByUserId")
-                        .HasDatabaseName("ix_course_reviews_approved_by_user_id");
-
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("ix_course_reviews_created_at");
-
-                    b.HasIndex("IsApproved")
-                        .HasDatabaseName("ix_course_reviews_is_approved");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_course_reviews_user_id");
-
-                    b.HasIndex("CourseId", "Rating")
-                        .HasDatabaseName("ix_course_reviews_course_id_rating");
-
-                    b.HasIndex("CourseId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_course_reviews_course_id_user_id");
-
-                    b.ToTable("course_reviews", (string)null);
                 });
 
             modelBuilder.Entity("Dentor.Academy.Web.Models.Question", b =>
@@ -1500,57 +1155,12 @@ namespace Dentor.Academy.Web.Migrations
 
             modelBuilder.Entity("Dentor.Academy.Web.Models.Course", b =>
                 {
-                    b.HasOne("Dentor.Academy.Web.Models.CourseCategory", "CourseCategory")
-                        .WithMany("Courses")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_courses_course_categories_category_id");
-
                     b.HasOne("Dentor.Academy.Web.Models.ApplicationUser", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .HasConstraintName("fk_courses_users_created_by_user_id");
 
-                    b.Navigation("CourseCategory");
-
                     b.Navigation("CreatedBy");
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseCertificate", b =>
-                {
-                    b.HasOne("Dentor.Academy.Web.Models.Course", "Course")
-                        .WithMany("Certificates")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_certificates_courses_course_id");
-
-                    b.HasOne("Dentor.Academy.Web.Models.CourseEnrollment", "Enrollment")
-                        .WithMany()
-                        .HasForeignKey("EnrollmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_certificates_course_enrollments_enrollment_id");
-
-                    b.HasOne("Dentor.Academy.Web.Models.ApplicationUser", "RevokedBy")
-                        .WithMany()
-                        .HasForeignKey("RevokedByUserId")
-                        .HasConstraintName("fk_course_certificates_asp_net_users_revoked_by_user_id");
-
-                    b.HasOne("Dentor.Academy.Web.Models.ApplicationUser", "User")
-                        .WithMany("CourseCertificates")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_certificates_asp_net_users_user_id");
-
-                    b.Navigation("Course");
-
-                    b.Navigation("Enrollment");
-
-                    b.Navigation("RevokedBy");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Dentor.Academy.Web.Models.CourseContent", b =>
@@ -1587,27 +1197,6 @@ namespace Dentor.Academy.Web.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_course_enrollments_users_user_id");
-
-                    b.Navigation("Course");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseInstructor", b =>
-                {
-                    b.HasOne("Dentor.Academy.Web.Models.Course", "Course")
-                        .WithMany("Instructors")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_instructors_courses_course_id");
-
-                    b.HasOne("Dentor.Academy.Web.Models.ApplicationUser", "User")
-                        .WithMany("CourseInstructors")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_instructors_users_user_id");
 
                     b.Navigation("Course");
 
@@ -1682,34 +1271,6 @@ namespace Dentor.Academy.Web.Migrations
                     b.Navigation("CourseContent");
 
                     b.Navigation("Enrollment");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseReview", b =>
-                {
-                    b.HasOne("Dentor.Academy.Web.Models.ApplicationUser", "ApprovedBy")
-                        .WithMany()
-                        .HasForeignKey("ApprovedByUserId")
-                        .HasConstraintName("fk_course_reviews_asp_net_users_approved_by_user_id");
-
-                    b.HasOne("Dentor.Academy.Web.Models.Course", "Course")
-                        .WithMany("Reviews")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_reviews_courses_course_id");
-
-                    b.HasOne("Dentor.Academy.Web.Models.ApplicationUser", "User")
-                        .WithMany("CourseReviews")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_course_reviews_asp_net_users_user_id");
-
-                    b.Navigation("ApprovedBy");
-
-                    b.Navigation("Course");
 
                     b.Navigation("User");
                 });
@@ -1852,33 +1413,13 @@ namespace Dentor.Academy.Web.Migrations
                     b.Navigation("UserResponseAnswers");
                 });
 
-            modelBuilder.Entity("Dentor.Academy.Web.Models.ApplicationUser", b =>
-                {
-                    b.Navigation("CourseCertificates");
-
-                    b.Navigation("CourseInstructors");
-
-                    b.Navigation("CourseReviews");
-                });
-
             modelBuilder.Entity("Dentor.Academy.Web.Models.Course", b =>
                 {
-                    b.Navigation("Certificates");
-
                     b.Navigation("Enrollments");
-
-                    b.Navigation("Instructors");
 
                     b.Navigation("Modules");
 
                     b.Navigation("Quizzes");
-
-                    b.Navigation("Reviews");
-                });
-
-            modelBuilder.Entity("Dentor.Academy.Web.Models.CourseCategory", b =>
-                {
-                    b.Navigation("Courses");
                 });
 
             modelBuilder.Entity("Dentor.Academy.Web.Models.CourseContent", b =>

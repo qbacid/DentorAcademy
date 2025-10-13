@@ -1,0 +1,827 @@
+@page "/admin/courses"
+@using Dentor.Academy.Web.DTOs.Course
+@using Dentor.Academy.Web.DTOs.User
+@using Dentor.Academy.Web.Interfaces
+@using Dentor.Academy.Web.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "Admin,Instructor")]
+@inject ICourseManagementService CourseService
+@inject ICourseCategoryService CategoryService
+@inject IUserManagementService UserService
+@inject NavigationManager Navigation
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Course Management</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-journal-text"></i> Course Management</h2>
+            <p class="text-muted">Create and manage courses, categories, and assignments</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowCreateCourseModal">
+                <i class="bi bi-plus-circle"></i> Create New Course
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Filter by Category</label>
+                    <select class="form-select" @bind="_filterCategoryId" @bind:after="LoadCourses">
+                        <option value="0">All Categories</option>
+                        @foreach (var category in _categories)
+                        {
+                            <option value="@category.Id">@category.Name (@category.CourseCount)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Filter by Status</label>
+                    <select class="form-select" @bind="_filterPublished" @bind:after="LoadCourses">
+                        <option value="">All Courses</option>
+                        <option value="true">Published Only</option>
+                        <option value="false">Unpublished Only</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search Courses</label>
+                    <input type="text" class="form-control" placeholder="Search by title..." @bind="_searchTerm" @bind:event="oninput" @bind:after="LoadCourses" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Courses List -->
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading courses...</p>
+        </div>
+    }
+    else if (_courses.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No courses found. Create your first course to get started!
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var course in _filteredCourses)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                        {
+                            <img src="@course.ThumbnailUrl" class="card-img-top" alt="@course.Title" style="height: 200px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
+                            </div>
+                        }
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">@course.Title</h5>
+                                @if (course.IsPublished)
+                                {
+                                    <span class="badge bg-success">Published</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Draft</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(course.Category))
+                            {
+                                <p class="text-muted small mb-2">
+                                    <i class="bi bi-folder"></i> @course.Category
+                                </p>
+                            }
+                            <p class="card-text text-muted small">@course.ShortDescription</p>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-people"></i> @course.EnrollmentCount students
+                                </small>
+                                <small class="text-muted">
+                                    <i class="bi bi-collection"></i> @course.ModuleCount modules
+                                </small>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-top">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => EditCourse(course.Id)">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" @onclick="() => ManageAssignments(course.Id)">
+                                    <i class="bi bi-person-plus"></i> Assign
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCourse(course.Id)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Create/Edit Course Modal -->
+@if (_showCourseModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @if (_editingCourse.Id == 0)
+                        {
+                            <span><i class="bi bi-plus-circle"></i> Create New Course</span>
+                        }
+                        else
+                        {
+                            <span><i class="bi bi-pencil"></i> Edit Course</span>
+                        }
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseCourseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Basic Information -->
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2">Basic Information</h6>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <label class="form-label">Course Title *</label>
+                            <input type="text" class="form-control" @bind="_editingCourse.Title" placeholder="Enter course title" required />
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Category *</label>
+                            <div class="input-group">
+                                <select class="form-select" @bind="_editingCourse.CategoryId">
+                                    <option value="">Select Category</option>
+                                    @foreach (var category in _categories.Where(c => c.IsActive))
+                                    {
+                                        <option value="@category.Id">@category.Name</option>
+                                    }
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" @onclick="ShowCreateCategoryModal">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Short Description</label>
+                            <input type="text" class="form-control" @bind="_editingCourse.ShortDescription" placeholder="Brief description (shown in course list)" maxlength="500" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Full Description</label>
+                            <textarea class="form-control" rows="5" @bind="_editingCourse.FullDescription" placeholder="Detailed course description"></textarea>
+                        </div>
+
+                        <!-- Course Details -->
+                        <div class="col-12 mt-4">
+                            <h6 class="border-bottom pb-2">Course Details</h6>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Difficulty Level</label>
+                            <select class="form-select" @bind="_editingCourse.DifficultyLevel">
+                                <option value="@DifficultyLevel.Beginner">Beginner</option>
+                                <option value="@DifficultyLevel.Intermediate">Intermediate</option>
+                                <option value="@DifficultyLevel.Advanced">Advanced</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Estimated Duration (hours)</label>
+                            <input type="number" class="form-control" @bind="_editingCourse.EstimatedDurationHours" min="0" step="0.5" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Price ($)</label>
+                            <input type="number" class="form-control" @bind="_editingCourse.Price" min="0" step="0.01" placeholder="0.00 for free" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Thumbnail URL</label>
+                            <input type="url" class="form-control" @bind="_editingCourse.ThumbnailUrl" placeholder="https://..." />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Cover Image URL</label>
+                            <input type="url" class="form-control" @bind="_editingCourse.CoverImageUrl" placeholder="https://..." />
+                        </div>
+
+                        <!-- Additional Information -->
+                        <div class="col-12 mt-4">
+                            <h6 class="border-bottom pb-2">Additional Information</h6>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Tags (comma-separated)</label>
+                            <input type="text" class="form-control" @bind="_tagsString" placeholder="dental, surgery, implants" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Learning Objectives (comma-separated)</label>
+                            <textarea class="form-control" rows="3" @bind="_objectivesString" placeholder="Understand basic concepts, Apply techniques..."></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Prerequisites (comma-separated)</label>
+                            <textarea class="form-control" rows="2" @bind="_prerequisitesString" placeholder="Basic knowledge of..."></textarea>
+                        </div>
+
+                        <!-- Publication Options -->
+                        <div class="col-12 mt-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="isPublished" @bind="_editingCourse.IsPublished">
+                                <label class="form-check-label" for="isPublished">
+                                    Publish Course (make visible to students)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="isFeatured" @bind="_editingCourse.IsFeatured">
+                                <label class="form-check-label" for="isFeatured">
+                                    Feature Course (highlight on homepage)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCourseModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveCourse" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <span>Save Course</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Create Category Modal -->
+@if (_showCategoryModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-folder-plus"></i> Create New Category</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCategoryModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Category Name *</label>
+                        <input type="text" class="form-control" @bind="_newCategory.Name" placeholder="e.g., Dental Surgery" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" rows="3" @bind="_newCategory.Description" placeholder="Brief description of this category"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label">Icon Class</label>
+                            <input type="text" class="form-control" @bind="_newCategory.IconClass" placeholder="bi bi-folder" />
+                            <small class="text-muted">Bootstrap Icons class</small>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Color</label>
+                            <input type="color" class="form-control form-control-color" @bind="_newCategory.Color" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCategoryModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveCategory" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <span>Create Category</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Manage Assignments Modal -->
+@if (_showAssignmentsModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus"></i> Manage Course Assignments</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAssignmentsModal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(_assignmentTab == "students" ? "active" : "")" 
+                                    @onclick='() => _assignmentTab = "students"'>
+                                <i class="bi bi-people"></i> Assign Students
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(_assignmentTab == "instructors" ? "active" : "")" 
+                                    @onclick='() => _assignmentTab = "instructors"'>
+                                <i class="bi bi-person-badge"></i> Assign Instructors
+                            </button>
+                        </li>
+                    </ul>
+
+                    @if (_assignmentTab == "students")
+                    {
+                        <div class="mb-3">
+                            <h6>Assign Students to Course</h6>
+                            <p class="text-muted">Select students to enroll in this course</p>
+                            
+                            <div class="mb-3">
+                                <input type="text" class="form-control" placeholder="Search students..." 
+                                       @bind="_studentSearchTerm" @bind:event="oninput" />
+                            </div>
+
+                            <div class="list-group" style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var student in _filteredStudents)
+                                {
+                                    <label class="list-group-item">
+                                        <div class="d-flex align-items-center">
+                                            <input class="form-check-input me-2" type="checkbox"
+                                                   checked="@_selectedStudentIds.Contains(student.Id)"
+                                                   @onchange="() => ToggleStudentSelection(student.Id)" />
+                                            <div class="flex-grow-1">
+                                                <strong>@student.UserName</strong>
+                                                <br />
+                                                <small class="text-muted">@student.Email</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+
+                            @if (_filteredStudents.Count == 0)
+                            {
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-info-circle"></i> No students found.
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (_assignmentTab == "instructors")
+                    {
+                        <div class="mb-3">
+                            <h6>Assign Instructors to Course</h6>
+                            <p class="text-muted">Select instructors to teach this course</p>
+                            
+                            <div class="mb-3">
+                                <input type="text" class="form-control" placeholder="Search instructors..." 
+                                       @bind="_instructorSearchTerm" @bind:event="oninput" />
+                            </div>
+
+                            <div class="list-group" style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var instructor in _filteredInstructors)
+                                {
+                                    <label class="list-group-item">
+                                        <div class="d-flex align-items-center">
+                                            <input class="form-check-input me-2" type="checkbox"
+                                                   checked="@_selectedInstructorIds.Contains(instructor.Id)"
+                                                   @onchange="() => ToggleInstructorSelection(instructor.Id)" />
+                                            <div class="flex-grow-1">
+                                                <strong>@instructor.UserName</strong>
+                                                <br />
+                                                <small class="text-muted">@instructor.Email</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+
+                            @if (_filteredInstructors.Count == 0)
+                            {
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-info-circle"></i> No instructors found.
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAssignmentsModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveAssignments" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <span>Save Assignments</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header @(_messageType == "success" ? "bg-success text-white" : "bg-danger text-white")">
+                <strong class="me-auto">
+                    @if (_messageType == "success")
+                    {
+                        <i class="bi bi-check-circle"></i>
+                        <span>Success</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-exclamation-circle"></i>
+                        <span>Error</span>
+                    }
+                </strong>
+                <button type="button" class="btn-close" @onclick="() => _message = string.Empty"></button>
+            </div>
+            <div class="toast-body">
+                @_message
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CourseListDto> _courses = new();
+    private List<CourseCategoryDto> _categories = new();
+    private List<UserDto> _students = new();
+    private List<UserDto> _instructors = new();
+    
+    private bool _loading = true;
+    private bool _saving = false;
+    private string _message = string.Empty;
+    private string _messageType = "success";
+
+    // Filters
+    private int _filterCategoryId = 0;
+    private string _filterPublished = "";
+    private string _searchTerm = "";
+
+    // Course Modal
+    private bool _showCourseModal = false;
+    private CourseDto _editingCourse = new();
+    private string _tagsString = "";
+    private string _objectivesString = "";
+    private string _prerequisitesString = "";
+
+    // Category Modal
+    private bool _showCategoryModal = false;
+    private CreateCourseCategoryDto _newCategory = new();
+
+    // Assignments Modal
+    private bool _showAssignmentsModal = false;
+    private int _selectedCourseId = 0;
+    private string _assignmentTab = "students";
+    private List<string> _selectedStudentIds = new();
+    private List<string> _selectedInstructorIds = new();
+    private string _studentSearchTerm = "";
+    private string _instructorSearchTerm = "";
+
+    private List<CourseListDto> _filteredCourses => _courses
+        .Where(c => (_filterCategoryId == 0 || c.CategoryId == _filterCategoryId))
+        .Where(c => string.IsNullOrEmpty(_filterPublished) || c.IsPublished == bool.Parse(_filterPublished))
+        .Where(c => string.IsNullOrEmpty(_searchTerm) || c.Title.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    private List<UserDto> _filteredStudents => _students
+        .Where(s => string.IsNullOrEmpty(_studentSearchTerm) || 
+                   s.UserName.Contains(_studentSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   s.Email.Contains(_studentSearchTerm, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    private List<UserDto> _filteredInstructors => _instructors
+        .Where(i => string.IsNullOrEmpty(_instructorSearchTerm) || 
+                   i.UserName.Contains(_instructorSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   i.Email.Contains(_instructorSearchTerm, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            await Task.WhenAll(
+                LoadCourses(),
+                LoadCategories(),
+                LoadUsers()
+            );
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadCourses()
+    {
+        var categoryId = _filterCategoryId > 0 ? (int?)_filterCategoryId : null;
+        bool? isPublished = string.IsNullOrEmpty(_filterPublished) ? null : bool.Parse(_filterPublished);
+        _courses = await CourseService.GetAllCoursesAsync(categoryId, isPublished);
+    }
+
+    private async Task LoadCategories()
+    {
+        _categories = await CategoryService.GetAllCategoriesAsync();
+    }
+
+    private async Task LoadUsers()
+    {
+        var allUsers = await UserService.GetAllUsersAsync();
+        _students = allUsers.Where(u => u.Roles.Contains("Student")).ToList();
+        _instructors = allUsers.Where(u => u.Roles.Contains("Instructor") || u.Roles.Contains("Admin")).ToList();
+    }
+
+    private void ShowCreateCourseModal()
+    {
+        _editingCourse = new CourseDto { DifficultyLevel = DifficultyLevel.Beginner };
+        _tagsString = "";
+        _objectivesString = "";
+        _prerequisitesString = "";
+        _showCourseModal = true;
+    }
+
+    private async Task EditCourse(int courseId)
+    {
+        var course = await CourseService.GetCourseByIdAsync(courseId);
+        if (course != null)
+        {
+            _editingCourse = course;
+            _tagsString = course.Tags != null ? string.Join(", ", course.Tags) : "";
+            _objectivesString = course.LearningObjectives != null ? string.Join(", ", course.LearningObjectives) : "";
+            _prerequisitesString = course.Prerequisites != null ? string.Join(", ", course.Prerequisites) : "";
+            _showCourseModal = true;
+        }
+    }
+
+    private void CloseCourseModal()
+    {
+        _showCourseModal = false;
+        _editingCourse = new();
+    }
+
+    private async Task SaveCourse()
+    {
+        if (string.IsNullOrWhiteSpace(_editingCourse.Title))
+        {
+            ShowMessage("Please enter a course title", "error");
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            // Parse comma-separated strings
+            _editingCourse.Tags = _tagsString.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrEmpty(t)).ToList();
+            _editingCourse.LearningObjectives = _objectivesString.Split(',').Select(o => o.Trim()).Where(o => !string.IsNullOrEmpty(o)).ToList();
+            _editingCourse.Prerequisites = _prerequisitesString.Split(',').Select(p => p.Trim()).Where(p => !string.IsNullOrEmpty(p)).ToList();
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = UserManager.GetUserId(authState.User);
+
+            CategoryOperationResult result;
+            if (_editingCourse.Id == 0)
+            {
+                result = await CourseService.CreateCourseAsync(_editingCourse, userId!);
+            }
+            else
+            {
+                result = await CourseService.UpdateCourseAsync(_editingCourse);
+            }
+
+            if (result.Success)
+            {
+                ShowMessage(result.Message, "success");
+                CloseCourseModal();
+                await LoadCourses();
+            }
+            else
+            {
+                ShowMessage(string.Join(", ", result.Errors), "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error saving course: {ex.Message}", "error");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteCourse(int courseId)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this course?"))
+            return;
+
+        try
+        {
+            var result = await CourseService.DeleteCourseAsync(courseId);
+            if (result.Success)
+            {
+                ShowMessage("Course deleted successfully", "success");
+                await LoadCourses();
+            }
+            else
+            {
+                ShowMessage(string.Join(", ", result.Errors), "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error deleting course: {ex.Message}", "error");
+        }
+    }
+
+    private void ShowCreateCategoryModal()
+    {
+        _newCategory = new CreateCourseCategoryDto
+        {
+            IconClass = "bi bi-folder",
+            Color = "#0066CC",
+            DisplayOrder = _categories.Count
+        };
+        _showCategoryModal = true;
+    }
+
+    private void CloseCategoryModal()
+    {
+        _showCategoryModal = false;
+        _newCategory = new();
+    }
+
+    private async Task SaveCategory()
+    {
+        if (string.IsNullOrWhiteSpace(_newCategory.Name))
+        {
+            ShowMessage("Please enter a category name", "error");
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var result = await CategoryService.CreateCategoryAsync(_newCategory);
+            if (result.Success)
+            {
+                ShowMessage("Category created successfully", "success");
+                CloseCategoryModal();
+                await LoadCategories();
+            }
+            else
+            {
+                ShowMessage(string.Join(", ", result.Errors), "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error creating category: {ex.Message}", "error");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ManageAssignments(int courseId)
+    {
+        _selectedCourseId = courseId;
+        _assignmentTab = "students";
+        _selectedStudentIds.Clear();
+        _selectedInstructorIds.Clear();
+        
+        // Load existing enrollments and instructors
+        await LoadExistingAssignments(courseId);
+        
+        _showAssignmentsModal = true;
+    }
+
+    private async Task LoadExistingAssignments(int courseId)
+    {
+        try
+        {
+            var enrollments = await CourseService.GetCourseEnrollmentsAsync(courseId);
+            _selectedStudentIds = enrollments.Select(e => e.UserId).ToList();
+            
+            // TODO: Load existing instructors when the method is available
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error loading assignments: {ex.Message}", "error");
+        }
+    }
+
+    private void CloseAssignmentsModal()
+    {
+        _showAssignmentsModal = false;
+        _selectedCourseId = 0;
+        _selectedStudentIds.Clear();
+        _selectedInstructorIds.Clear();
+    }
+
+    private void ToggleStudentSelection(string studentId)
+    {
+        if (_selectedStudentIds.Contains(studentId))
+            _selectedStudentIds.Remove(studentId);
+        else
+            _selectedStudentIds.Add(studentId);
+    }
+
+    private void ToggleInstructorSelection(string instructorId)
+    {
+        if (_selectedInstructorIds.Contains(instructorId))
+            _selectedInstructorIds.Remove(instructorId);
+        else
+            _selectedInstructorIds.Add(instructorId);
+    }
+
+    private async Task SaveAssignments()
+    {
+        _saving = true;
+        try
+        {
+            if (_assignmentTab == "students")
+            {
+                var result = await CourseService.BulkEnrollUsersAsync(_selectedCourseId, _selectedStudentIds);
+                if (result.Success)
+                {
+                    ShowMessage($"Successfully enrolled {_selectedStudentIds.Count} students", "success");
+                }
+                else
+                {
+                    ShowMessage(string.Join(", ", result.Errors), "error");
+                }
+            }
+            else if (_assignmentTab == "instructors")
+            {
+                // TODO: Implement instructor assignment when the service method is ready
+                ShowMessage("Instructor assignment will be implemented soon", "error");
+            }
+
+            CloseAssignmentsModal();
+            await LoadCourses();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error saving assignments: {ex.Message}", "error");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void ShowMessage(string message, string type)
+    {
+        _message = message;
+        _messageType = type;
+        StateHasChanged();
+        
+        // Auto-hide after 5 seconds
+        Task.Delay(5000).ContinueWith(_ => 
+        {
+            _message = string.Empty;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+}

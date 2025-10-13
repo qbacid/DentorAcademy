@@ -1,5 +1,8 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.User;
 
+/// <summary>
+/// DTO for displaying user information
+/// </summary>
 public class UserDto
 {
     public string Id { get; set; } = string.Empty;
@@ -11,4 +14,3 @@ public class UserDto
     public DateTime? CreatedAt { get; set; }
     public DateTime? LastLogin { get; set; }
 }
-

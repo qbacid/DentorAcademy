@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Dentor.Academy.Web.Data;
-using Dentor.Academy.Web.DTOs;
+using Dentor.Academy.Web.DTOs.Quiz;
+using Dentor.Academy.Web.Interfaces;
 using Dentor.Academy.Web.Models;
 
 namespace Dentor.Academy.Web.Services;
@@ -8,15 +9,15 @@ namespace Dentor.Academy.Web.Services;
 /// <summary>
 /// Service for managing quiz taking and display
 /// </summary>
-public class QuizTakingService
+public class QuizTakingService : IQuizTakingService
 {
     private readonly QuizDbContext _context;
-    private readonly QuizScoringService _scoringService;
+    private readonly IQuizScoringService _scoringService;
     private readonly ILogger<QuizTakingService> _logger;
 
     public QuizTakingService(
         QuizDbContext context,
-        QuizScoringService scoringService,
+        IQuizScoringService scoringService,
         ILogger<QuizTakingService> logger)
     {
         _context = context;
@@ -25,9 +26,181 @@ public class QuizTakingService
     }
 
     /// <summary>
-    /// Get quiz details for display (without showing correct answers)
+    /// Start a new quiz attempt
     /// </summary>
-    public async Task<QuizDisplayDto?> GetQuizForDisplayAsync(int quizId)
+    public async Task<QuizAttempt?> StartQuizAsync(int quizId, string userId)
+    {
+        var quiz = await _context.Quizzes.FindAsync(quizId);
+        if (quiz == null || !quiz.IsActive)
+        {
+            _logger.LogWarning("Quiz {QuizId} not found or not active", quizId);
+            return null;
+        }
+
+        // Check if there's already an active attempt
+        var existingAttempt = await GetActiveQuizAttemptAsync(quizId, userId);
+        if (existingAttempt != null)
+        {
+            return existingAttempt;
+        }
+
+        var attempt = new QuizAttempt
+        {
+            QuizId = quizId,
+            UserId = userId,
+            StartedAt = DateTime.UtcNow,
+            IsCompleted = false
+        };
+
+        _context.QuizAttempts.Add(attempt);
+        await _context.SaveChangesAsync();
+
+        return attempt;
+    }
+
+    /// <summary>
+    /// Get active quiz attempt for a user
+    /// </summary>
+    public async Task<QuizAttempt?> GetActiveQuizAttemptAsync(int quizId, string userId)
+    {
+        return await _context.QuizAttempts
+            .Where(qa => qa.QuizId == quizId && qa.UserId == userId && !qa.IsCompleted)
+            .OrderByDescending(qa => qa.StartedAt)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Submit an answer for a question
+    /// </summary>
+    public async Task<bool> SubmitAnswerAsync(int quizAttemptId, int questionId, List<int> selectedAnswerIds, string? textAnswer = null)
+    {
+        try
+        {
+            var question = await _context.Questions.FindAsync(questionId);
+            if (question == null)
+            {
+                _logger.LogWarning("Question {QuestionId} not found", questionId);
+                return false;
+            }
+
+            // Upsert user response
+            var response = await _context.UserResponses
+                .FirstOrDefaultAsync(ur => ur.QuizAttemptId == quizAttemptId && ur.QuestionId == questionId);
+
+            if (response == null)
+            {
+                response = new UserResponse
+                {
+                    QuizAttemptId = quizAttemptId,
+                    QuestionId = questionId,
+                    AnsweredAt = DateTime.UtcNow
+                };
+                _context.UserResponses.Add(response);
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                // Remove old option selections if any
+                var oldAnswers = await _context.UserResponseAnswers
+                    .Where(ura => ura.UserResponseId == response.Id)
+                    .ToListAsync();
+                _context.UserResponseAnswers.RemoveRange(oldAnswers);
+            }
+
+            // Persist short text answer (trim and cap at 500)
+            response.TextAnswer = string.IsNullOrWhiteSpace(textAnswer)
+                ? null
+                : (textAnswer.Length > 500 ? textAnswer.Substring(0, 500) : textAnswer).Trim();
+
+            if (question.QuestionType == QuestionType.UserShortAnwswer)
+            {
+                // Ignore option IDs for short answer; no auto-scoring
+                response.IsCorrect = false;
+                response.PointsEarned = 0;
+            }
+            else
+            {
+                // Save selected option IDs
+                foreach (var optionId in selectedAnswerIds)
+                {
+                    var responseAnswer = new UserResponseAnswer
+                    {
+                        UserResponseId = response.Id,
+                        AnswerOptionId = optionId,
+                        SelectedAt = DateTime.UtcNow
+                    };
+                    _context.UserResponseAnswers.Add(responseAnswer);
+                }
+
+                // Auto-evaluate for option-based questions
+                var isCorrect = await _scoringService.EvaluateResponse(questionId, selectedAnswerIds);
+                response.IsCorrect = isCorrect;
+                response.PointsEarned = isCorrect ? question.Points : 0;
+            }
+
+            response.AnsweredAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error submitting answer for question {QuestionId}", questionId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Complete a quiz attempt
+    /// </summary>
+    public async Task<QuizAttempt?> CompleteQuizAsync(int quizAttemptId)
+    {
+        try
+        {
+            // Calculate final score
+            var attempt = await _scoringService.CalculateFinalScore(quizAttemptId);
+            return attempt;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing quiz attempt {QuizAttemptId}", quizAttemptId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get available quizzes, optionally filtered by category
+    /// </summary>
+    public async Task<List<QuizCardDto>> GetAvailableQuizzesAsync(string? category = null)
+    {
+        var query = _context.Quizzes
+            .Where(q => q.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            query = query.Where(q => q.Category == category);
+        }
+
+        var quizzes = await query
+            .Select(q => new QuizCardDto
+            {
+                Id = q.Id,
+                Title = q.Title,
+                Description = q.Description,
+                Category = q.Category,
+                QuestionCount = q.Questions.Count,
+                PassingScore = q.PassingScore,
+                TimeLimitMinutes = q.TimeLimitMinutes
+            })
+            .ToListAsync();
+
+        return quizzes;
+    }
+
+    /// <summary>
+    /// Get quiz details for taking (without showing correct answers)
+    /// </summary>
+    public async Task<QuizDisplayDto?> GetQuizForTakingAsync(int quizId, string userId)
     {
         var quiz = await _context.Quizzes
             .Include(q => q.Questions.OrderBy(qq => qq.OrderIndex))
@@ -65,98 +238,37 @@ public class QuizTakingService
     }
 
     /// <summary>
-    /// Start a new quiz attempt
+    /// Get quiz details for display (without showing correct answers)
+    /// </summary>
+    public async Task<QuizDisplayDto?> GetQuizForDisplayAsync(int quizId)
+    {
+        // Reuse the GetQuizForTakingAsync method with empty userId
+        return await GetQuizForTakingAsync(quizId, string.Empty);
+    }
+
+    /// <summary>
+    /// Start a new quiz attempt (legacy method for backward compatibility)
     /// </summary>
     public async Task<int> StartQuizAttemptAsync(int quizId, string email, string fullName)
     {
-        var quiz = await _context.Quizzes.FindAsync(quizId);
-        if (quiz == null || !quiz.IsActive)
+        // Create a user identifier from email
+        var userId = $"{email}|{fullName}";
+        
+        var attempt = await StartQuizAsync(quizId, userId);
+        if (attempt == null)
         {
             throw new InvalidOperationException("Quiz not found or not active");
         }
-
-        // Create a user identifier from email (you can enhance this later with proper auth)
-        var userId = $"{email}|{fullName}";
-
-        var attempt = new QuizAttempt
-        {
-            QuizId = quizId,
-            UserId = userId,
-            StartedAt = DateTime.UtcNow,
-            IsCompleted = false
-        };
-
-        _context.QuizAttempts.Add(attempt);
-        await _context.SaveChangesAsync();
 
         return attempt.Id;
     }
 
     /// <summary>
-    /// Save user's answer for a question
+    /// Save user's answer for a question (legacy method for backward compatibility)
     /// </summary>
     public async Task SaveQuestionAnswerAsync(int quizAttemptId, QuestionAnswerDto answer)
     {
-        var question = await _context.Questions.FindAsync(answer.QuestionId)
-            ?? throw new InvalidOperationException("Question not found while saving answer");
-
-        // Upsert user response
-        var response = await _context.UserResponses
-            .FirstOrDefaultAsync(ur => ur.QuizAttemptId == quizAttemptId && ur.QuestionId == answer.QuestionId);
-
-        if (response == null)
-        {
-            response = new UserResponse
-            {
-                QuizAttemptId = quizAttemptId,
-                QuestionId = answer.QuestionId,
-                AnsweredAt = DateTime.UtcNow
-            };
-            _context.UserResponses.Add(response);
-            await _context.SaveChangesAsync();
-        }
-        else
-        {
-            // Remove old option selections if any
-            var oldAnswers = await _context.UserResponseAnswers
-                .Where(ura => ura.UserResponseId == response.Id)
-                .ToListAsync();
-            _context.UserResponseAnswers.RemoveRange(oldAnswers);
-        }
-
-        // Persist short text answer (trim and cap at 500)
-        response.TextAnswer = string.IsNullOrWhiteSpace(answer.ShortTextAnswer)
-            ? null
-            : (answer.ShortTextAnswer.Length > 500 ? answer.ShortTextAnswer.Substring(0, 500) : answer.ShortTextAnswer).Trim();
-
-        if (question.QuestionType == QuestionType.UserShortAnwswer)
-        {
-            // Ignore option IDs for short answer; no auto-scoring
-            response.IsCorrect = false;
-            response.PointsEarned = 0;
-        }
-        else
-        {
-            // Save selected option IDs
-            foreach (var optionId in answer.SelectedAnswerOptionIds)
-            {
-                var responseAnswer = new UserResponseAnswer
-                {
-                    UserResponseId = response.Id,
-                    AnswerOptionId = optionId,
-                    SelectedAt = DateTime.UtcNow
-                };
-                _context.UserResponseAnswers.Add(responseAnswer);
-            }
-
-            // Auto-evaluate for option-based questions
-            var isCorrect = await _scoringService.EvaluateResponse(answer.QuestionId, answer.SelectedAnswerOptionIds);
-            response.IsCorrect = isCorrect;
-            response.PointsEarned = isCorrect ? question.Points : 0;
-        }
-
-        response.AnsweredAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+        await SubmitAnswerAsync(quizAttemptId, answer.QuestionId, answer.SelectedAnswerOptionIds, answer.ShortTextAnswer);
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.Quiz;
 
 /// <summary>
 /// Result of a quiz import operation
@@ -12,4 +12,3 @@ public class ImportResult
     public List<string> Errors { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
 }
-

@@ -1,8 +1,10 @@
 @page "/quiz-import"
+
 @attribute [Authorize(Roles = "Admin")]
-@using Dentor.Academy.Web.Services
-@using Dentor.Academy.Web.DTOs
-@inject QuizImportService ImportService
+@using Dentor.Academy.Web.DTOs.Quiz
+
+@using Dentor.Academy.Web.Interfaces
+@inject IQuizImportService ImportService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 

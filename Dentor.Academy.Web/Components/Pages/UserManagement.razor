@@ -1,9 +1,13 @@
 @page "/user-management"
 @using Dentor.Academy.Web.DTOs
-@using Dentor.Academy.Web.Services
+
+@using Dentor.Academy.Web.Interfaces
 @using System.ComponentModel.DataAnnotations
+@using Dentor.Academy.Web.DTOs.User
+
 @rendermode InteractiveServer
-@inject UserManagementService UserManagementService
+
+@inject IUserManagementService UserManagementService
 @inject IJSRuntime JS
 
 @attribute [Authorize(Roles = "Admin")]

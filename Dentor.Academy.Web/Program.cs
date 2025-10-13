@@ -1,11 +1,10 @@
 using Dentor.Academy.Web.Components;
 using Dentor.Academy.Web.Data;
+using Dentor.Academy.Web.Interfaces;
 using Dentor.Academy.Web.Models;
 using Dentor.Academy.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,10 +13,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddCascadingAuthenticationState();
-// Removed explicit AuthenticationStateProvider registration; default Server provider will be used.
 
 // Configure PostgreSQL Database Context
-builder.Services.AddDbContext<QuizDbContext>(options =>
+builder.Services.AddDbContextFactory<QuizDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("QuizDatabase"),
         npgsqlOptions =>
@@ -65,12 +63,14 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 });
 
-// Register Quiz Services
-builder.Services.AddScoped<QuizScoringService>();
-builder.Services.AddScoped<QuizImportService>();
-builder.Services.AddScoped<QuizTakingService>();
-builder.Services.AddScoped<UserPerformanceService>();
-builder.Services.AddScoped<UserManagementService>();
+// Register Services with Dependency Injection (using interfaces)
+builder.Services.AddScoped<IQuizScoringService, QuizScoringService>();
+builder.Services.AddScoped<IQuizImportService, QuizImportService>();
+builder.Services.AddScoped<IQuizTakingService, QuizTakingService>();
+builder.Services.AddScoped<IUserPerformanceService, UserPerformanceService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<ICourseCategoryService, CourseCategoryService>();
+builder.Services.AddScoped<ICourseManagementService, CourseManagementService>();
 
 var app = builder.Build();
 
@@ -103,7 +103,7 @@ using (var scope = app.Services.CreateScope())
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
     // Ensure all roles exist
-    string[] roles = { "Admin", "Student", "Teacher", "Authenticated User", "Course Manager" };
+    string[] roles = { "Admin", "Student", "Instructor", "Authenticated User", "Course Manager" };
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))

@@ -1,13 +1,14 @@
-using Dentor.Academy.Web.DTOs;
+using Dentor.Academy.Web.DTOs.User;
 using Dentor.Academy.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
+using Dentor.Academy.Web.Interfaces;
 
 namespace Dentor.Academy.Web.Services;
 
-public class UserManagementService
+public class UserManagementService : IUserManagementService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
@@ -294,7 +295,7 @@ public class UserManagementService
 
     public async Task EnsureRolesExistAsync()
     {
-        string[] roles = { "Admin", "Student", "Teacher", "Authenticated User", "Course Manager" };
+        string[] roles = { "Admin", "Student", "Instructor", "Authenticated User", "Course Manager" };
         
         foreach (var role in roles)
         {
@@ -305,4 +306,3 @@ public class UserManagementService
         }
     }
 }
-

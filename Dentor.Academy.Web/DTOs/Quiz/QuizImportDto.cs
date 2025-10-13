@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.Quiz;
 
 /// <summary>
-/// DTO for importing a complete quiz from JSON
+/// DTO for importing quiz data from external sources
 /// </summary>
 public class QuizImportDto
 {

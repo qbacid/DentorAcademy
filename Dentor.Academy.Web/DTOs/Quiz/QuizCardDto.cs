@@ -1,7 +1,7 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.Quiz;
 
 /// <summary>
-/// DTO for displaying quiz cards in grids/lists
+/// DTO for displaying quiz card information in lists
 /// </summary>
 public class QuizCardDto
 {

@@ -1,9 +1,17 @@
 ﻿@page "/"
-@using Dentor.Academy.Web.Data
-@using Dentor.Academy.Web.DTOs
-@using Microsoft.EntityFrameworkCore
-@inject QuizDbContext DbContext
+
+@using Dentor.Academy.Web.DTOs.Quiz
+@using Dentor.Academy.Web.DTOs.Course
+@using Dentor.Academy.Web.Interfaces
+@using Microsoft.AspNetCore.Identity
+
+@inject ICourseManagementService CourseService
+@inject ICourseCategoryService CategoryService
+@inject IQuizTakingService QuizService
 @inject NavigationManager Navigation
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
 @rendermode InteractiveServer
 
 <PageTitle>Luxadent Pro Academy - Home</PageTitle>
@@ -14,8 +22,7 @@
             <div class="col-lg-8">
                 <h4 class="display-4 fw-bold mb-3">Welcome to Luxadent Pro Training Center</h4>
                 <p class="lead text-muted mb-2">
-                    Test your knowledge and enhance your learning with our interactive quizzes. 
-                    Choose a quiz below to get started!
+                    Explore our courses and enhance your learning journey. Browse available courses and enroll to get started!
                 </p>
             </div>
         </div>
@@ -23,137 +30,327 @@
 </div>
 
 <div class="container">
-    @if (quizzes == null)
+    <!-- Category Filter -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Available Courses</h3>
+            <AuthorizeView Roles="Admin,Instructor">
+                <Authorized>
+                    <a href="/admin/courses" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-gear"></i> Manage Courses
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+        
+        <div class="btn-group flex-wrap" role="group">
+            <button type="button" 
+                    class="btn @(_selectedCategoryId == null ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="() => FilterByCategory(null)">
+                All Courses (@_allCoursesCount)
+            </button>
+            @foreach (var category in _categories)
+            {
+                <button type="button" 
+                        class="btn @(_selectedCategoryId == category.Id ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="() => FilterByCategory(category.Id)">
+                    @category.Name (@category.CourseCount)
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (_loading)
     {
-        <LoadingSpinner Message="Loading quizzes..." />
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading courses...</p>
+        </div>
     }
-    else if (!quizzes.Any())
+    else if (_filteredCourses.Count == 0)
     {
-        <EmptyState 
-            Title="No Quizzes Available Yet"
-            Message="There are no quizzes available at the moment. Import your first quiz to get started!"
-            IconClass="bi bi-inbox"
-            ShowAction="true"
-            ActionText="Import Quiz"
-            ActionIconClass="bi bi-upload"
-            ActionUrl="/quiz-import"
-            RequiredRole="Admin" />
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No courses available in this category.
+        </div>
     }
     else
     {
-        <!-- Stats Section -->
-        <div class="mb-2">
-            <h3 class="mb-3">Available Quizzes/Exercises</h3>
-            <p class="text-muted">Click on any quiz card to begin</p>
-        </div>
-        
-        <!-- Stats Card -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card stats-card">
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <h3 class="text-primary mb-1">@quizzes.Count</h3>
-                                    <p class="text-muted mb-0">Available Quizzes</p>
-                                </div>
+        <!-- Course Cards Grid -->
+        <div class="row g-4">
+            @foreach (var course in _filteredCourses)
+            {
+                <div class="col-sm-6 col-lg-4">
+                    <div class="quiz-list-card">
+                        @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                        {
+                            <div class="course-thumbnail">
+                                <img src="@course.ThumbnailUrl" alt="@course.Title" />
                             </div>
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <h3 class="text-primary mb-1">@totalQuestions</h3>
-                                    <p class="text-muted mb-0">Total Questions</p>
-                                </div>
+                        }
+                        <div class="qlc-header" title="@course.Category">
+                            @(course.Category ?? "General")
+                        </div>
+                        <div class="qlc-body">
+                            <h6 class="qlc-title">@course.Title</h6>
+                            @if (!string.IsNullOrWhiteSpace(course.ShortDescription))
+                            {
+                                <p class="qlc-desc">@course.ShortDescription</p>
+                            }
+                            else
+                            {
+                                <p class="qlc-desc qlc-desc-empty fst-italic text-muted">No description provided.</p>
+                            }
+                            <div class="qlc-meta text-muted">
+                                <span><i class="bi bi-signal"></i> @course.DifficultyLevel</span>
+                                @if (course.EstimatedDurationHours > 0)
+                                {
+                                    <span>&bull; @course.EstimatedDurationHours hrs</span>
+                                }
+                                @if (course.Price > 0)
+                                {
+                                    <span>&bull; $@course.Price.ToString("F2")</span>
+                                }
+                                else
+                                {
+                                    <span>&bull; <span class="text-success">Free</span></span>
+                                }
                             </div>
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <h3 class="text-primary mb-1">@categoriesCount</h3>
-                                    <p class="text-muted mb-0">Categories</p>
-                                </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-people"></i> @course.EnrollmentCount enrolled
+                                </small>
                             </div>
-                            <AuthorizeView>
-                                <Authorized>
-                                    <div class="col-md-3">
-                                        <div class="stat-item">
-                                            <h3 class="text-primary mb-1">
-                                                @if (communityAverageScore.HasValue)
-                                                {
-                                                    @($"{communityAverageScore.Value:F0}%")
-                                                }
-                                                else
-                                                {
-                                                    <span>--</span>
-                                                }
-                                            </h3>
-                                            <p class="text-muted mb-0">Community Score</p>
-                                        </div>
-                                    </div>
-                                </Authorized>
-                            </AuthorizeView>
+                        </div>
+                        <div class="qlc-footer">
+                            @if (_isEnrolled.ContainsKey(course.Id) && _isEnrolled[course.Id])
+                            {
+                                <span class="text-success">
+                                    <i class="bi bi-check-circle-fill"></i> Enrolled
+                                </span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        @onclick="() => ViewCourse(course.Id)">
+                                    View Course &rsaquo;
+                                </button>
+                            }
+                            else
+                            {
+                                <AuthorizeView>
+                                    <Authorized>
+                                        <button class="btn btn-sm btn-primary w-100" 
+                                                @onclick="() => EnrollInCourse(course.Id)"
+                                                disabled="@_enrolling">
+                                            @if (_enrolling)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                            }
+                                            <i class="bi bi-plus-circle"></i> Enroll Now
+                                        </button>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <a href="/login" class="btn btn-sm btn-outline-primary w-100">
+                                            <i class="bi bi-box-arrow-in-right"></i> Login to Enroll
+                                        </a>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            }
                         </div>
                     </div>
                 </div>
+            }
+        </div>
+    }
+
+    <!-- Quizzes Section -->
+    <div class="mt-5 pt-4 border-top">
+        <h3 class="mb-3">Quick Practice Quizzes</h3>
+        <p class="text-muted mb-4">Test your knowledge with our interactive quizzes</p>
+        
+        @if (quizzes == null)
+        {
+            <LoadingSpinner Message="Loading quizzes..." />
+        }
+        else if (!quizzes.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No quizzes available at the moment.
+            </div>
+        }
+        else
+        {
+            <QuizCardGrid Quizzes="@quizzes" OnQuizSelected="@NavigateToQuiz" />
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header @(_messageType == "success" ? "bg-success text-white" : "bg-danger text-white")">
+                <strong class="me-auto">
+                    @if (_messageType == "success")
+                    {
+                        <i class="bi bi-check-circle"></i>
+                        <span>Success</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-exclamation-circle"></i>
+                        <span>Error</span>
+                    }
+                </strong>
+                <button type="button" class="btn-close" @onclick="() => _message = string.Empty"></button>
+            </div>
+            <div class="toast-body">
+                @_message
             </div>
         </div>
-
-        <!-- Quiz Cards Grid -->
-        <QuizCardGrid Quizzes="@quizzes" OnQuizSelected="@NavigateToQuiz" />
-    }
-</div>
+    </div>
+}
 
 @code {
     private List<QuizCardDto>? quizzes;
-    private int totalQuestions => quizzes?.Sum(q => q.QuestionCount) ?? 0;
-    private int categoriesCount => quizzes?
-        .Where(q => !string.IsNullOrWhiteSpace(q.Category))
-        .Select(q => q.Category)
-        .Distinct()
-        .Count() ?? 0;
-    private decimal? communityAverageScore;
+    private List<CourseListDto> _courses = new();
+    private List<CourseListDto> _filteredCourses = new();
+    private List<CourseCategoryDto> _categories = new();
+    private Dictionary<int, bool> _isEnrolled = new();
+    
+    private bool _loading = true;
+    private bool _enrolling = false;
+    private int? _selectedCategoryId = null;
+    private int _allCoursesCount = 0;
+    private string _message = string.Empty;
+    private string _messageType = "success";
+    private string? _currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadQuizzes();
-        await LoadCommunityAverageScore();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            // Get current user
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            _currentUserId = UserManager.GetUserId(authState.User);
+
+            // Load data sequentially to avoid DbContext threading issues
+            await LoadCategories();
+            await LoadCourses();
+            await LoadQuizzes();
+
+            // Check enrollment status
+            if (!string.IsNullOrEmpty(_currentUserId))
+            {
+                await CheckEnrollmentStatus();
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadCourses()
+    {
+        _courses = await CourseService.GetAllCoursesAsync(null, true); // Only published courses
+        _allCoursesCount = _courses.Count;
+        _filteredCourses = _courses;
+    }
+
+    private async Task LoadCategories()
+    {
+        var allCategories = await CategoryService.GetAllCategoriesAsync(includeInactive: false);
+        // Only show categories that have published courses
+        _categories = allCategories.Where(c => c.CourseCount > 0).ToList();
     }
 
     private async Task LoadQuizzes()
     {
-        quizzes = await DbContext.Quizzes
-            .Where(q => q.IsActive)
-            .Select(q => new QuizCardDto
-            {
-                Id = q.Id,
-                Title = q.Title,
-                Description = q.Description,
-                Category = q.Category,
-                PassingScore = q.PassingScore,
-                TimeLimitMinutes = q.TimeLimitMinutes,
-                QuestionCount = q.Questions.Count
-            })
-            .OrderByDescending(q => q.Id)
-            .ToListAsync();
+        quizzes = await QuizService.GetAvailableQuizzesAsync();
     }
 
-    private async Task LoadCommunityAverageScore()
+    private async Task CheckEnrollmentStatus()
     {
-        var completedAttempts = await DbContext.QuizAttempts
-            .Where(qa => qa.CompletedAt.HasValue && qa.Score.HasValue)
-            .Select(qa => qa.Score!.Value)
-            .ToListAsync();
+        if (string.IsNullOrEmpty(_currentUserId)) return;
+
+        var enrolledCourseIds = await CourseService.GetUserEnrolledCourseIdsAsync(_currentUserId);
+        _isEnrolled = _courses.ToDictionary(c => c.Id, c => enrolledCourseIds.Contains(c.Id));
+    }
+
+    private void FilterByCategory(int? categoryId)
+    {
+        _selectedCategoryId = categoryId;
         
-        if (completedAttempts.Any())
+        if (categoryId == null)
         {
-            communityAverageScore = completedAttempts.Average();
+            _filteredCourses = _courses;
         }
         else
         {
-            communityAverageScore = null;
+            _filteredCourses = _courses.Where(c => c.CategoryId == categoryId).ToList();
         }
+    }
+
+    private async Task EnrollInCourse(int courseId)
+    {
+        if (string.IsNullOrEmpty(_currentUserId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _enrolling = true;
+        try
+        {
+            var result = await CourseService.EnrollUserAsync(courseId, _currentUserId);
+            if (result.Success)
+            {
+                _isEnrolled[courseId] = true;
+                ShowMessage("Successfully enrolled in course!", "success");
+                await LoadCourses(); // Refresh enrollment count
+            }
+            else
+            {
+                ShowMessage(string.Join(", ", result.Errors), "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error enrolling in course: {ex.Message}", "error");
+        }
+        finally
+        {
+            _enrolling = false;
+        }
+    }
+
+    private void ViewCourse(int courseId)
+    {
+        Navigation.NavigateTo($"/course/{courseId}");
     }
 
     private void NavigateToQuiz(int quizId)
     {
         Navigation.NavigateTo($"/quiz/{quizId}");
+    }
+
+    private void ShowMessage(string message, string type)
+    {
+        _message = message;
+        _messageType = type;
+        StateHasChanged();
+        
+        // Auto-hide after 5 seconds
+        Task.Delay(5000).ContinueWith(_ => 
+        {
+            _message = string.Empty;
+            InvokeAsync(StateHasChanged);
+        });
     }
 }

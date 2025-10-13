@@ -1,16 +1,7 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.Quiz;
 
 /// <summary>
-/// DTO for quiz participant information
-/// </summary>
-public class QuizParticipantDto
-{
-    public string Email { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// DTO for quiz display with all questions and options
+/// DTO for displaying quiz to users during quiz taking
 /// </summary>
 public class QuizDisplayDto
 {

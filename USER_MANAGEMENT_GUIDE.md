@@ -16,7 +16,7 @@ Added the following fields to track user behavior:
 The following roles have been created and are automatically seeded at application startup:
 - **Admin** - Full system access including user management
 - **Student** - Regular user taking quizzes
-- **Teacher** - Can create and manage educational content
+- **Instructor** - Can create and manage educational content
 - **Authenticated User** - Basic authenticated access
 - **Course Manager** - Manages courses and content
 
@@ -151,4 +151,3 @@ A migration named `AddUserManagementFields` has been created and applied, adding
 - Implement email notifications for password resets
 - Add user profile management
 - Implement audit logging for user management actions
-

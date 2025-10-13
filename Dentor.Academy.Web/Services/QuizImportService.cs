@@ -1,7 +1,7 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Dentor.Academy.Web.Data;
-using Dentor.Academy.Web.DTOs;
+using Dentor.Academy.Web.DTOs.Quiz;
+using Dentor.Academy.Web.Interfaces;
 using Dentor.Academy.Web.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +10,7 @@ namespace Dentor.Academy.Web.Services;
 /// <summary>
 /// Service for importing quizzes from JSON file format
 /// </summary>
-public class QuizImportService
+public class QuizImportService : IQuizImportService
 {
     private readonly QuizDbContext _context;
     private readonly ILogger<QuizImportService> _logger;
@@ -19,6 +19,48 @@ public class QuizImportService
     {
         _context = context;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Import quiz from CSV stream
+    /// </summary>
+    public async Task<ImportResult> ImportQuizFromCsvAsync(Stream csvStream, string fileName)
+    {
+        var result = new ImportResult();
+        
+        try
+        {
+            // TODO: Implement CSV import logic when required
+            result.Errors.Add("CSV import is not currently supported. Please use JSON format.");
+            return await Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error importing quiz from CSV");
+            result.Errors.Add($"CSV import error: {ex.Message}");
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Validate quiz data without importing
+    /// </summary>
+    public async Task<ImportResult> ValidateQuizDataAsync(QuizImportDto quizData)
+    {
+        var result = new ImportResult();
+        
+        var validationErrors = ValidateQuizDto(quizData);
+        if (validationErrors.Any())
+        {
+            result.Errors.AddRange(validationErrors);
+        }
+        else
+        {
+            result.Success = true;
+            result.Message = "Quiz data is valid";
+        }
+        
+        return await Task.FromResult(result);
     }
 
     /// <summary>
@@ -199,7 +241,7 @@ public class QuizImportService
             errors.Add("Passing score must be between 0 and 100");
         }
 
-        if (quizDto.Questions == null || quizDto.Questions.Count == 0)
+        if (quizDto.Questions.Count == 0)
         {
             errors.Add("Quiz must have at least one question");
             return errors;

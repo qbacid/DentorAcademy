@@ -1,5 +1,8 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.User;
 
+/// <summary>
+/// DTO for updating existing users
+/// </summary>
 public class UpdateUserDto
 {
     public string Id { get; set; } = string.Empty;
@@ -7,4 +10,3 @@ public class UpdateUserDto
     public string UserName { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = new();
 }
-

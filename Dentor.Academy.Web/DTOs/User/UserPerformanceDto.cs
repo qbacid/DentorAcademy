@@ -1,4 +1,27 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.User;
+
+/// <summary>
+/// DTO for user performance analytics
+/// </summary>
+public class UserPerformanceDto
+{
+    public string UserId { get; set; } = string.Empty;
+    public string UserEmail { get; set; } = string.Empty;
+    public int TotalQuizzesTaken { get; set; }
+    public int TotalQuestionsAnswered { get; set; }
+    public decimal OverallAverageScore { get; set; }
+    public List<CategoryPerformanceDto> CategoryPerformances { get; set; } = new();
+    public List<string> StrengthAreas { get; set; } = new(); // Categories with score >= 80%
+    public List<string> ImprovementAreas { get; set; } = new(); // Categories with score < 70%
+    public DateTime? LastActivityDate { get; set; }
+}
+
+/// <summary>
+/// Alias for UserPerformanceDto for backward compatibility
+/// </summary>
+public class UserPerformanceSummaryDto : UserPerformanceDto
+{
+}
 
 /// <summary>
 /// DTO for user performance statistics by category
@@ -19,22 +42,6 @@ public class CategoryPerformanceDto
 }
 
 /// <summary>
-/// DTO for overall user performance summary
-/// </summary>
-public class UserPerformanceSummaryDto
-{
-    public string UserId { get; set; } = string.Empty;
-    public string UserEmail { get; set; } = string.Empty;
-    public int TotalQuizzesTaken { get; set; }
-    public int TotalQuestionsAnswered { get; set; }
-    public decimal OverallAverageScore { get; set; }
-    public List<CategoryPerformanceDto> CategoryPerformances { get; set; } = new();
-    public List<string> StrengthAreas { get; set; } = new(); // Categories with score >= 80%
-    public List<string> ImprovementAreas { get; set; } = new(); // Categories with score < 70%
-    public DateTime? LastActivityDate { get; set; }
-}
-
-/// <summary>
 /// DTO for quiz attempt summary
 /// </summary>
 public class QuizAttemptSummaryDto
@@ -50,4 +57,3 @@ public class QuizAttemptSummaryDto
     public int TotalQuestions { get; set; }
     public int CorrectAnswers { get; set; }
 }
-

@@ -1,13 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Dentor.Academy.Web.Data;
-using Dentor.Academy.Web.DTOs;
+using Dentor.Academy.Web.DTOs.User;
+using Dentor.Academy.Web.Interfaces;
 
 namespace Dentor.Academy.Web.Services;
 
 /// <summary>
 /// Service for calculating and tracking user performance analytics by category
 /// </summary>
-public class UserPerformanceService
+public class UserPerformanceService : IUserPerformanceService
 {
     private readonly QuizDbContext _context;
     private readonly ILogger<UserPerformanceService> _logger;
@@ -21,7 +22,7 @@ public class UserPerformanceService
     /// <summary>
     /// Get comprehensive performance summary for a user
     /// </summary>
-    public async Task<UserPerformanceSummaryDto> GetUserPerformanceSummaryAsync(string userId)
+    public async Task<UserPerformanceDto?> GetUserPerformanceAsync(string userId)
     {
         var attempts = await _context.QuizAttempts
             .Include(qa => qa.Quiz)
@@ -31,16 +32,12 @@ public class UserPerformanceService
 
         if (!attempts.Any())
         {
-            return new UserPerformanceSummaryDto
-            {
-                UserId = userId,
-                UserEmail = ExtractEmailFromUserId(userId)
-            };
+            return null;
         }
 
         var categoryPerformances = await CalculateCategoryPerformancesAsync(userId);
 
-        var summary = new UserPerformanceSummaryDto
+        var summary = new UserPerformanceDto
         {
             UserId = userId,
             UserEmail = ExtractEmailFromUserId(userId),
@@ -60,6 +57,52 @@ public class UserPerformanceService
         };
 
         return summary;
+    }
+
+    /// <summary>
+    /// Get top performing users
+    /// </summary>
+    public async Task<List<UserPerformanceDto>> GetTopPerformersAsync(int count = 10)
+    {
+        var topUsers = await _context.QuizAttempts
+            .Where(qa => qa.IsCompleted && qa.Score.HasValue)
+            .GroupBy(qa => qa.UserId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                AverageScore = g.Average(qa => qa.Score!.Value),
+                QuizzesTaken = g.Count()
+            })
+            .OrderByDescending(u => u.AverageScore)
+            .Take(count)
+            .ToListAsync();
+
+        var performers = new List<UserPerformanceDto>();
+        foreach (var user in topUsers)
+        {
+            var performance = await GetUserPerformanceAsync(user.UserId);
+            if (performance != null)
+            {
+                performers.Add(performance);
+            }
+        }
+
+        return performers;
+    }
+
+    /// <summary>
+    /// Get category performance summary (category name -> quiz count)
+    /// </summary>
+    public async Task<Dictionary<string, int>> GetCategoryPerformanceAsync(string userId)
+    {
+        return await _context.QuizAttempts
+            .Include(qa => qa.Quiz)
+            .Where(qa => qa.UserId == userId 
+                && qa.IsCompleted 
+                && qa.Quiz.Category != null)
+            .GroupBy(qa => qa.Quiz.Category!)
+            .Select(g => new { Category = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Category, x => x.Count);
     }
 
     /// <summary>
@@ -112,7 +155,7 @@ public class UserPerformanceService
     /// <summary>
     /// Get performance for a specific category
     /// </summary>
-    public async Task<CategoryPerformanceDto?> GetCategoryPerformanceAsync(string userId, string category)
+    public async Task<CategoryPerformanceDto?> GetCategoryPerformanceDetailAsync(string userId, string category)
     {
         var performances = await CalculateCategoryPerformancesAsync(userId);
         return performances.FirstOrDefault(p => p.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
@@ -263,4 +306,3 @@ public class UserPerformanceService
 
     #endregion
 }
-

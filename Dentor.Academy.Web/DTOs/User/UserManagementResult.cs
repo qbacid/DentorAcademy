@@ -1,5 +1,8 @@
-namespace Dentor.Academy.Web.DTOs;
+namespace Dentor.Academy.Web.DTOs.User;
 
+/// <summary>
+/// Result of a user management operation
+/// </summary>
 public class UserManagementResult
 {
     public bool Success { get; set; }

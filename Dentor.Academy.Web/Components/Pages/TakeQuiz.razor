@@ -1,10 +1,18 @@
 @page "/quiz/{QuizId:int}"
+@using System.Security.Claims
 @using Dentor.Academy.Web.DTOs
-
-
-@inject Dentor.Academy.Web.Services.QuizTakingService QuizService
+@using Dentor.Academy.Web.DTOs.Quiz
+@using Dentor.Academy.Web.Interfaces
+@using Dentor.Academy.Web.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using Dentor.Academy.Web.Interfaces
+@inject IQuizTakingService QuizService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>@(_quiz?.Title ?? "Take Quiz")</PageTitle>
 
@@ -29,7 +37,7 @@
                     </div>
                     <div class="card-body">
                         <h4 class="mb-3">@_quiz?.Title</h4>
-                        
+
                         @if (!string.IsNullOrEmpty(_quiz?.Description))
                         {
                             <p class="text-muted">@_quiz.Description</p>
@@ -50,7 +58,35 @@
 
                         <hr/>
 
-                        <h5 class="mb-3">Enter Your Information</h5>
+                        <h5 class="mb-3">
+                            @if (_isAuthenticated)
+                            {
+                                <span>Your Information</span>
+                                _fullName = User.Identity?.Name;
+                                _email = User.Claims
+                                    .First(x=> x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
+                                    .Value;
+                            }
+                            else
+                            {
+                                <span>Enter Your Information</span>
+                                _fullName = string.Empty;
+                                _email = String.Empty;
+                            }
+                        </h5>
+
+                        @if (_isAuthenticated)
+                        {
+                            _fullName = User.Identity?.Name;
+                            _email = User.Claims
+                                .First(x=> x.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
+                                .Value;
+
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle"></i> Your information will be
+                                automatically saved.
+                            </div>
+                        }
 
                         <div class="mb-3">
                             <label for="fullName" class="form-label">Full Name *</label>
@@ -59,6 +95,7 @@
                                    id="fullName"
                                    @bind="_fullName"
                                    placeholder="Enter your full name"
+                                   readonly="@_isAuthenticated"
                                    required/>
                             @if (_showValidation && string.IsNullOrWhiteSpace(_fullName))
                             {
@@ -73,6 +110,7 @@
                                    id="email"
                                    @bind="_email"
                                    placeholder="your.email@example.com"
+                                   readonly="@_isAuthenticated"
                                    required/>
                             @if (_showValidation && string.IsNullOrWhiteSpace(_email))
                             {
@@ -477,6 +515,7 @@
     private string _email = string.Empty;
     private bool _showValidation = false;
     private bool _showExplanationsImmediately = false;
+    private bool _isAuthenticated = false;
 
     // Quiz state
     private bool _hasStarted = false;
@@ -497,9 +536,14 @@
     private int AnsweredCount => (_quiz == null) ? 0 : _quiz.Questions.Count(q => IsQuestionAnsweredInternal(q.QuestionId));
     private int UnansweredCount => (_quiz?.TotalQuestions ?? 0) - AnsweredCount;
     private double ProgressPercentage => _quiz?.TotalQuestions > 0 ? (double)(_currentQuestionIndex + 1) / _quiz.TotalQuestions * 100 : 0;
+    
+    public ClaimsPrincipal? User = null;
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to authentication state changes
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        
         _quiz = await QuizService.GetQuizForDisplayAsync(QuizId);
 
         if (_quiz == null)
@@ -507,6 +551,51 @@
             // Quiz not found, redirect to home
             Navigation.NavigateTo("/");
         }
+        else
+        {
+            // Check if the user is authenticated and load their info
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            User = authState.User;
+
+            if (User.Identity != null)
+            {
+                _isAuthenticated = User.Identity.IsAuthenticated;
+            }
+
+            if (_isAuthenticated)
+            {
+                _fullName = User.FindFirst(c => c.Type == "name")?.Value!;
+                _email = User.FindFirst(c => c.Type == "email")?.Value!;
+            }
+        }
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        var authState = await task;
+        User = authState.User;
+        
+        if (User.Identity != null && User.Identity.IsAuthenticated)
+        {
+            _isAuthenticated = true;
+            _fullName = User.FindFirst(c => c.Type == "name")?.Value ?? string.Empty;
+            _email = User.FindFirst(c => c.Type == "email")?.Value ?? string.Empty;
+        }
+        else
+        {
+            // User logged out - clear the data
+            _isAuthenticated = false;
+            _fullName = string.Empty;
+            _email = string.Empty;
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from authentication state changes
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 
     private bool IsValidEmail(string address)

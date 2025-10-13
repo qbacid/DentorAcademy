@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Dentor.Academy.Web.Data;
+using Dentor.Academy.Web.Interfaces;
 using Dentor.Academy.Web.Models;
 
 namespace Dentor.Academy.Web.Services;
@@ -7,7 +8,7 @@ namespace Dentor.Academy.Web.Services;
 /// <summary>
 /// Service for managing quiz scoring and calculations
 /// </summary>
-public class QuizScoringService
+public class QuizScoringService : IQuizScoringService
 {
     private readonly QuizDbContext _context;
 
@@ -167,6 +168,42 @@ public class QuizScoringService
                 UserTextAnswer = ur.TextAnswer
             }).ToList()
         };
+    }
+
+    /// <summary>
+    /// Calculate the overall score for a quiz attempt
+    /// </summary>
+    public async Task<decimal> CalculateQuizScore(int quizAttemptId)
+    {
+        var attempt = await CalculateFinalScore(quizAttemptId);
+        return attempt.Score ?? 0;
+    }
+
+    /// <summary>
+    /// Check if a quiz attempt passed
+    /// </summary>
+    public async Task<bool> HasPassedQuiz(int quizAttemptId)
+    {
+        var attempt = await _context.QuizAttempts
+            .Include(qa => qa.Quiz)
+            .FirstOrDefaultAsync(qa => qa.Id == quizAttemptId);
+        
+        if (attempt == null || !attempt.Score.HasValue)
+            return false;
+            
+        return attempt.Score >= attempt.Quiz.PassingScore;
+    }
+
+    /// <summary>
+    /// Calculate score for a specific question
+    /// </summary>
+    public async Task<decimal> CalculateQuestionScore(int questionId, List<int> selectedAnswerOptionIds)
+    {
+        var question = await _context.Questions.FindAsync(questionId);
+        if (question == null) return 0;
+        
+        var isCorrect = await EvaluateResponse(questionId, selectedAnswerOptionIds);
+        return isCorrect ? question.Points : 0;
     }
 }
 
