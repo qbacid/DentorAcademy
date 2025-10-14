@@ -82,7 +82,7 @@
 .nav-scrollable .links a.active, .nav-scrollable .links ::deep a.active {
     background: #667eea;
     color: #fff;
-    font-weight: 600;
+    /*kfont-weight: 600;*/
 }
 
 /* Focus accessibility */

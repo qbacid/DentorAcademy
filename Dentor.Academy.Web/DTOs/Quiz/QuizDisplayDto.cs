@@ -38,6 +38,7 @@ public class AnswerOptionDisplayDto
     public int AnswerOptionId { get; set; }
     public string OptionText { get; set; } = string.Empty;
     public int OrderIndex { get; set; }
+    public bool IsCorrect { get; set; } // Used only when showing explanations
 }
 
 /// <summary>

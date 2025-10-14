@@ -44,6 +44,21 @@ public class Course
   [Column("cover_image_url")]
   public string? CoverImageUrl { get; set; }
 
+
+  [Column("thumbnail_image")]
+  public byte[]? ThumbnailImage { get; set; }
+
+  [MaxLength(100)]
+  [Column("thumbnail_content_type")]
+  public string? ThumbnailContentType { get; set; }
+
+  [Column("cover_image")]
+  public byte[]? CoverImage { get; set; }
+
+  [MaxLength(100)]
+  [Column("cover_image_content_type")]
+  public string? CoverImageContentType { get; set; }
+
   [Column("difficulty_level")]
   public string DifficultyLevel { get; set; } = "Beginner"; // Beginner, Intermediate, Advanced
 

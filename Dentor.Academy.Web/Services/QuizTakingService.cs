@@ -231,7 +231,8 @@ public class QuizTakingService : IQuizTakingService
                 {
                     AnswerOptionId = a.Id,
                     OptionText = a.OptionText,
-                    OrderIndex = a.OrderIndex
+                    OrderIndex = a.OrderIndex,
+                    IsCorrect = a.IsCorrect // Include IsCorrect for explanation display
                 }).ToList()
             }).ToList()
         };

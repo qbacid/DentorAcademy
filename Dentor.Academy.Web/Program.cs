@@ -63,6 +63,17 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 });
 
+// Configure file upload limits (Microsoft best practice)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10 MB max for form data
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
+
+// Add response caching for better performance
+builder.Services.AddResponseCaching();
+
 // Register Services with Dependency Injection (using interfaces)
 builder.Services.AddScoped<IQuizScoringService, QuizScoringService>();
 builder.Services.AddScoped<IQuizImportService, QuizImportService>();
@@ -71,6 +82,9 @@ builder.Services.AddScoped<IUserPerformanceService, UserPerformanceService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<ICourseCategoryService, CourseCategoryService>();
 builder.Services.AddScoped<ICourseManagementService, CourseManagementService>();
+
+// Add Controllers for API endpoints (image serving)
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -83,6 +97,20 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Add response caching middleware
+app.UseResponseCaching();
+
+// Add security headers middleware
+app.Use(async (context, next) =>
+{
+    // Security headers per Microsoft recommendations
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    
+    await next();
+});
 
 app.MapStaticAssets();
 
@@ -140,5 +168,8 @@ using (var scope = app.Services.CreateScope())
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Map API controllers
+app.MapControllers();
 
 app.Run();

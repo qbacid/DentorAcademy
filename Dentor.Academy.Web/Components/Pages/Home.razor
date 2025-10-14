@@ -272,7 +272,8 @@
 
     private async Task LoadQuizzes()
     {
-        quizzes = await QuizService.GetAvailableQuizzesAsync();
+        quizzes = await QuizService.
+            GetAvailableQuizzesAsync();
     }
 
     private async Task CheckEnrollmentStatus()

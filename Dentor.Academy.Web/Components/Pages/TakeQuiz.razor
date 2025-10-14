@@ -200,15 +200,32 @@
                                     @foreach (var option in CurrentQuestion.AnswerOptions)
                                     {
                                         <label
-                                            class="list-group-item list-group-item-action @(IsOptionSelected(option.AnswerOptionId) ? "active" : "")"
+                                            class="list-group-item list-group-item-action @GetAnswerOptionClass(option)"
                                             style="cursor: pointer;">
-                                            <input type="radio"
-                                                   class="form-check-input me-2"
-                                                   name="answer_@CurrentQuestion.QuestionId"
-                                                   value="@option.AnswerOptionId"
-                                                   checked="@IsOptionSelected(option.AnswerOptionId)"
-                                                   @onchange="@(() => SelectSingleOption(option.AnswerOptionId))"/>
-                                            <span>@option.OptionText</span>
+                                            <div class="d-flex align-items-center">
+                                                <input type="radio"
+                                                       class="form-check-input me-2"
+                                                       name="answer_@CurrentQuestion.QuestionId"
+                                                       value="@option.AnswerOptionId"
+                                                       checked="@IsOptionSelected(option.AnswerOptionId)"
+                                                       @onchange="@(() => SelectSingleOption(option.AnswerOptionId))"/>
+                                                <span class="flex-grow-1">@option.OptionText</span>
+                                                @if (_showExplanationsImmediately && _showCurrentExplanation)
+                                                {
+                                                    @if (option.IsCorrect && IsOptionSelected(option.AnswerOptionId))
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                                                    }
+                                                    else if (option.IsCorrect && !IsOptionSelected(option.AnswerOptionId))
+                                                    {
+                                                        <i class="bi bi-check-circle text-success ms-2"></i>
+                                                    }
+                                                    else if (!option.IsCorrect && IsOptionSelected(option.AnswerOptionId))
+                                                    {
+                                                        <i class="bi bi-x-circle-fill text-danger ms-2"></i>
+                                                    }
+                                                }
+                                            </div>
                                         </label>
                                     }
                                 </div>
@@ -219,13 +236,30 @@
                                     @foreach (var option in CurrentQuestion.AnswerOptions)
                                     {
                                         <label
-                                            class="list-group-item list-group-item-action @(IsOptionSelected(option.AnswerOptionId) ? "active" : "")"
+                                            class="list-group-item list-group-item-action @GetAnswerOptionClass(option)"
                                             style="cursor: pointer;">
-                                            <input type="checkbox"
-                                                   class="form-check-input me-2"
-                                                   checked="@IsOptionSelected(option.AnswerOptionId)"
-                                                   @onchange="@(() => ToggleMultipleOption(option.AnswerOptionId))"/>
-                                            <span>@option.OptionText</span>
+                                            <div class="d-flex align-items-center">
+                                                <input type="checkbox"
+                                                       class="form-check-input me-2"
+                                                       checked="@IsOptionSelected(option.AnswerOptionId)"
+                                                       @onchange="@(() => ToggleMultipleOption(option.AnswerOptionId))"/>
+                                                <span class="flex-grow-1">@option.OptionText</span>
+                                                @if (_showExplanationsImmediately && _showCurrentExplanation)
+                                                {
+                                                    @if (option.IsCorrect && IsOptionSelected(option.AnswerOptionId))
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                                                    }
+                                                    else if (option.IsCorrect && !IsOptionSelected(option.AnswerOptionId))
+                                                    {
+                                                        <i class="bi bi-check-circle text-success ms-2"></i>
+                                                    }
+                                                    else if (!option.IsCorrect && IsOptionSelected(option.AnswerOptionId))
+                                                    {
+                                                        <i class="bi bi-x-circle-fill text-danger ms-2"></i>
+                                                    }
+                                                }
+                                            </div>
                                         </label>
                                     }
                                 </div>
@@ -826,6 +860,32 @@
         if (!answer.IsCorrect && answer.WasSelected)
             return "list-group-item-danger";
         return string.Empty;
+    }
+
+    private string GetAnswerOptionClass(AnswerOptionDisplayDto option)
+    {
+        // If explanation is shown, highlight correct/incorrect answers
+        if (_showExplanationsImmediately && _showCurrentExplanation)
+        {
+            if (option.IsCorrect && IsOptionSelected(option.AnswerOptionId))
+            {
+                // Correct answer that was selected - green highlight
+                return "list-group-item-success";
+            }
+            else if (option.IsCorrect && !IsOptionSelected(option.AnswerOptionId))
+            {
+                // Correct answer that was not selected - light green highlight
+                return "list-group-item-success bg-opacity-25";
+            }
+            else if (!option.IsCorrect && IsOptionSelected(option.AnswerOptionId))
+            {
+                // Incorrect answer that was selected - red highlight
+                return "list-group-item-danger";
+            }
+        }
+        
+        // Default: show selected state with active class (blue highlight)
+        return IsOptionSelected(option.AnswerOptionId) ? "active" : "";
     }
 
 }

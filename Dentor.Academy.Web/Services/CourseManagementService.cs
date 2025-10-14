@@ -3,6 +3,7 @@ using Dentor.Academy.Web.DTOs.Course;
 using Dentor.Academy.Web.Interfaces;
 using Dentor.Academy.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace Dentor.Academy.Web.Services;
 
@@ -113,6 +114,11 @@ public class CourseManagementService : ICourseManagementService
                 CategoryId = dto.CategoryId,
                 ThumbnailUrl = dto.ThumbnailUrl,
                 CoverImageUrl = dto.CoverImageUrl,
+                // Store uploaded images
+                ThumbnailImage = dto.ThumbnailImageData,
+                ThumbnailContentType = dto.ThumbnailContentType,
+                CoverImage = dto.CoverImageData,
+                CoverImageContentType = dto.CoverImageContentType,
                 DifficultyLevel = dto.DifficultyLevel.ToString(),
                 EstimatedDurationHours = (int)dto.EstimatedDurationHours,
                 Price = dto.Price,
@@ -162,6 +168,19 @@ public class CourseManagementService : ICourseManagementService
             course.CategoryId = dto.CategoryId;
             course.ThumbnailUrl = dto.ThumbnailUrl;
             course.CoverImageUrl = dto.CoverImageUrl;
+            
+            // Update images if new ones are provided
+            if (dto.ThumbnailImageData != null)
+            {
+                course.ThumbnailImage = dto.ThumbnailImageData;
+                course.ThumbnailContentType = dto.ThumbnailContentType;
+            }
+            if (dto.CoverImageData != null)
+            {
+                course.CoverImage = dto.CoverImageData;
+                course.CoverImageContentType = dto.CoverImageContentType;
+            }
+            
             course.DifficultyLevel = dto.DifficultyLevel.ToString();
             course.EstimatedDurationHours = (int)dto.EstimatedDurationHours;
             course.Price = dto.Price;
@@ -897,6 +916,151 @@ public class CourseManagementService : ICourseManagementService
             .Where(e => e.UserId == userId)
             .Select(e => e.CourseId)
             .ToListAsync();
+    }
+
+    #endregion
+
+    #region Image Management
+
+    // Allowed image extensions and MIME types per Microsoft best practices
+    private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static readonly string[] AllowedImageMimeTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
+    private const long MaxImageSizeBytes = 2 * 1024 * 1024; // 2 MB
+
+    public async Task<CategoryOperationResult> UploadThumbnailImageAsync(int courseId, IBrowserFile file)
+    {
+        var result = new CategoryOperationResult();
+
+        try
+        {
+            // Validate file size
+            if (file.Size > MaxImageSizeBytes)
+            {
+                result.Errors.Add($"File size must be less than {MaxImageSizeBytes / (1024 * 1024)} MB");
+                return result;
+            }
+
+            // Validate content type
+            if (!AllowedImageMimeTypes.Contains(file.ContentType.ToLowerInvariant()))
+            {
+                result.Errors.Add("File must be a valid image (JPEG, PNG, GIF, or WebP)");
+                return result;
+            }
+
+            // Validate file extension
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!AllowedImageExtensions.Contains(extension))
+            {
+                result.Errors.Add("Invalid file extension. Allowed: " + string.Join(", ", AllowedImageExtensions));
+                return result;
+            }
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            
+            var course = await context.Courses.FindAsync(courseId);
+            if (course == null)
+            {
+                result.Errors.Add("Course not found");
+                return result;
+            }
+
+            // Read file data with size limit enforcement
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: MaxImageSizeBytes).CopyToAsync(memoryStream);
+            
+            // Verify the stream actually contains image data (basic check)
+            if (memoryStream.Length == 0)
+            {
+                result.Errors.Add("File appears to be empty");
+                return result;
+            }
+
+            course.ThumbnailImage = memoryStream.ToArray();
+            course.ThumbnailContentType = file.ContentType;
+            course.ThumbnailUrl = $"/api/course-images/thumbnail/{courseId}";
+            course.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            result.Success = true;
+            result.Message = "Thumbnail uploaded successfully";
+            _logger.LogInformation("Uploaded thumbnail for course {CourseId}, size: {Size} bytes", courseId, file.Size);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading thumbnail for course {CourseId}", courseId);
+            result.Errors.Add($"Error uploading thumbnail: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    public async Task<CategoryOperationResult> UploadCoverImageAsync(int courseId, IBrowserFile file)
+    {
+        var result = new CategoryOperationResult();
+
+        try
+        {
+            // Validate file size
+            if (file.Size > MaxImageSizeBytes)
+            {
+                result.Errors.Add($"File size must be less than {MaxImageSizeBytes / (1024 * 1024)} MB");
+                return result;
+            }
+
+            // Validate content type
+            if (!AllowedImageMimeTypes.Contains(file.ContentType.ToLowerInvariant()))
+            {
+                result.Errors.Add("File must be a valid image (JPEG, PNG, GIF, or WebP)");
+                return result;
+            }
+
+            // Validate file extension
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!AllowedImageExtensions.Contains(extension))
+            {
+                result.Errors.Add("Invalid file extension. Allowed: " + string.Join(", ", AllowedImageExtensions));
+                return result;
+            }
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            
+            var course = await context.Courses.FindAsync(courseId);
+            if (course == null)
+            {
+                result.Errors.Add("Course not found");
+                return result;
+            }
+
+            // Read file data with size limit enforcement
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: MaxImageSizeBytes).CopyToAsync(memoryStream);
+            
+            // Verify the stream actually contains image data (basic check)
+            if (memoryStream.Length == 0)
+            {
+                result.Errors.Add("File appears to be empty");
+                return result;
+            }
+
+            course.CoverImage = memoryStream.ToArray();
+            course.CoverImageContentType = file.ContentType;
+            course.CoverImageUrl = $"/api/course-images/cover/{courseId}";
+            course.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            result.Success = true;
+            result.Message = "Cover image uploaded successfully";
+            _logger.LogInformation("Uploaded cover image for course {CourseId}, size: {Size} bytes", courseId, file.Size);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading cover image for course {CourseId}", courseId);
+            result.Errors.Add($"Error uploading cover image: {ex.Message}");
+        }
+
+        return result;
     }
 
     #endregion

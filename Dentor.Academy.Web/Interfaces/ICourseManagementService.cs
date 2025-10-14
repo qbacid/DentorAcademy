@@ -1,4 +1,5 @@
 using Dentor.Academy.Web.DTOs.Course;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace Dentor.Academy.Web.Interfaces;
 
@@ -52,4 +53,8 @@ public interface ICourseManagementService
     Task<CategoryOperationResult> BulkEnrollUsersAsync(int courseId, List<string> userIds);
     Task<CategoryOperationResult> UnenrollUserAsync(int enrollmentId);
     Task<List<int>> GetUserEnrolledCourseIdsAsync(string userId);
+    
+    // Image Management
+    Task<CategoryOperationResult> UploadThumbnailImageAsync(int courseId, IBrowserFile file);
+    Task<CategoryOperationResult> UploadCoverImageAsync(int courseId, IBrowserFile file);
 }

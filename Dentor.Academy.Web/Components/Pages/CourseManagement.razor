@@ -223,14 +223,44 @@
                             <input type="number" class="form-control" @bind="_editingCourse.Price" min="0" step="0.01" placeholder="0.00 for free" />
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label">Thumbnail URL</label>
-                            <input type="url" class="form-control" @bind="_editingCourse.ThumbnailUrl" placeholder="https://..." />
+                        <!-- Image Uploads -->
+                        <div class="col-12 mt-4">
+                            <h6 class="border-bottom pb-2">Course Images</h6>
+                            <p class="text-muted small">Upload images for your course. Recommended: Thumbnail (400x300px), Cover (1200x600px)</p>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Cover Image URL</label>
-                            <input type="url" class="form-control" @bind="_editingCourse.CoverImageUrl" placeholder="https://..." />
+                            <label class="form-label">Thumbnail Image</label>
+                            <InputFile class="form-control" OnChange="@HandleThumbnailUpload" accept="image/*" />
+                            @if (!string.IsNullOrEmpty(_thumbnailPreview))
+                            {
+                                <div class="mt-2">
+                                    <img src="@_thumbnailPreview" alt="Thumbnail preview" style="max-width: 200px; max-height: 150px;" class="img-thumbnail" />
+                                </div>
+                            }
+                            else if (_editingCourse.Id > 0)
+                            {
+                                <div class="mt-2">
+                                    <img src="/api/course-images/thumbnail/@_editingCourse.Id" alt="Current thumbnail" style="max-width: 200px; max-height: 150px;" class="img-thumbnail" />
+                                </div>
+                            }
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Cover Image</label>
+                            <InputFile class="form-control" OnChange="@HandleCoverImageUpload" accept="image/*" />
+                            @if (!string.IsNullOrEmpty(_coverImagePreview))
+                            {
+                                <div class="mt-2">
+                                    <img src="@_coverImagePreview" alt="Cover preview" style="max-width: 200px; max-height: 100px;" class="img-thumbnail" />
+                                </div>
+                            }
+                            else if (_editingCourse.Id > 0)
+                            {
+                                <div class="mt-2">
+                                    <img src="/api/course-images/cover/@_editingCourse.Id" alt="Current cover" style="max-width: 200px; max-height: 100px;" class="img-thumbnail" />
+                                </div>
+                            }
                         </div>
 
                         <!-- Additional Information -->
@@ -619,9 +649,21 @@
             var userId = UserManager.GetUserId(authState.User);
 
             CategoryOperationResult result;
+            int courseId = _editingCourse.Id;
+            
             if (_editingCourse.Id == 0)
             {
                 result = await CourseService.CreateCourseAsync(_editingCourse, userId!);
+                if (result.Success)
+                {
+                    // Get the created course to get its ID
+                    var courses = await CourseService.GetAllCoursesAsync();
+                    var createdCourse = courses.OrderByDescending(c => c.CreatedAt).FirstOrDefault();
+                    if (createdCourse != null)
+                    {
+                        courseId = createdCourse.Id;
+                    }
+                }
             }
             else
             {
@@ -630,7 +672,39 @@
 
             if (result.Success)
             {
+                // Upload images if files were selected
+                if (_thumbnailFile != null && courseId > 0)
+                {
+                    var uploadResult = await CourseService.UploadThumbnailImageAsync(courseId, _thumbnailFile);
+                    if (!uploadResult.Success)
+                    {
+                        ShowMessage($"Course saved but thumbnail upload failed: {string.Join(", ", uploadResult.Errors)}", "error");
+                        _saving = false;
+                        await LoadCourses();
+                        return;
+                    }
+                }
+
+                if (_coverImageFile != null && courseId > 0)
+                {
+                    var uploadResult = await CourseService.UploadCoverImageAsync(courseId, _coverImageFile);
+                    if (!uploadResult.Success)
+                    {
+                        ShowMessage($"Course saved but cover image upload failed: {string.Join(", ", uploadResult.Errors)}", "error");
+                        _saving = false;
+                        await LoadCourses();
+                        return;
+                    }
+                }
+
                 ShowMessage(result.Message, "success");
+                
+                // Clear image state
+                _thumbnailFile = null;
+                _coverImageFile = null;
+                _thumbnailPreview = string.Empty;
+                _coverImagePreview = string.Empty;
+                
                 CloseCourseModal();
                 await LoadCourses();
             }
@@ -823,5 +897,64 @@
             _message = string.Empty;
             InvokeAsync(StateHasChanged);
         });
+    }
+
+    private string _thumbnailPreview = string.Empty;
+    private string _coverImagePreview = string.Empty;
+    private IBrowserFile? _thumbnailFile = null;
+    private IBrowserFile? _coverImageFile = null;
+
+    private async Task HandleThumbnailUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.GetMultipleFiles(1).FirstOrDefault();
+        if (file != null)
+        {
+            // Validate file type and size
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                ShowMessage("Please upload a valid image file", "error");
+                return;
+            }
+
+            if (file.Size > 2 * 1024 * 1024) // 2 MB limit
+            {
+                ShowMessage("Image file size must be less than 2 MB", "error");
+                return;
+            }
+
+            _thumbnailFile = file;
+            
+            // Create preview
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024).ReadAsync(buffer);
+            _thumbnailPreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
+    }
+
+    private async Task HandleCoverImageUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.GetMultipleFiles(1).FirstOrDefault();
+        if (file != null)
+        {
+            // Validate file type and size
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                ShowMessage("Please upload a valid image file", "error");
+                return;
+            }
+
+            if (file.Size > 2 * 1024 * 1024) // 2 MB limit
+            {
+                ShowMessage("Image file size must be less than 2 MB", "error");
+                return;
+            }
+
+            _coverImageFile = file;
+            
+            // Create preview
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024).ReadAsync(buffer);
+            _coverImagePreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
     }
 }

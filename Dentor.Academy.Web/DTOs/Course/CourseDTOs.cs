@@ -80,6 +80,13 @@ public class CourseDto
     public int? CategoryId { get; set; }
     public string? ThumbnailUrl { get; set; }
     public string? CoverImageUrl { get; set; }
+    
+    // Image data for upload
+    public byte[]? ThumbnailImageData { get; set; }
+    public string? ThumbnailContentType { get; set; }
+    public byte[]? CoverImageData { get; set; }
+    public string? CoverImageContentType { get; set; }
+    
     public DifficultyLevel DifficultyLevel { get; set; } = DifficultyLevel.Beginner;
     public decimal EstimatedDurationHours { get; set; }
     public decimal Price { get; set; }
@@ -157,4 +164,3 @@ public class CategoryOperationResult
     public List<string> Errors { get; set; } = new();
     public CourseCategoryDto? Category { get; set; }
 }
-
