@@ -1,0 +1,558 @@
+@page "/course/{CourseId:int}"
+@using Dentor.Academy.Web.DTOs.Course
+@using System.Security.Claims
+@inject ICourseManagementService CourseService
+@inject ICourseContentService ContentService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(_course?.Title ?? "Course Details")</PageTitle>
+
+@if (_loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-3">Loading course details...</p>
+    </div>
+}
+else if (_course != null)
+{
+    <!-- Course Header with Cover Image -->
+    <div class="course-header">
+        @if (!string.IsNullOrEmpty(_course.CoverImageUrl))
+        {
+            <div class="cover-image" style="background-image: url('@_course.CoverImageUrl');"></div>
+        }
+        <div class="cover-overlay"></div>
+        <div class="container position-relative">
+            <div class="row py-5">
+                <div class="col-lg-8">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/courses" class="text-white">Courses</a></li>
+                            <li class="breadcrumb-item active text-white">@_course.Title</li>
+                        </ol>
+                    </nav>
+                    <h1 class="text-white display-5 fw-bold">@_course.Title</h1>
+                    <p class="text-white lead">@_course.ShortDescription</p>
+                    <div class="d-flex gap-3 text-white mb-3">
+                        <span><i class="bi bi-bar-chart"></i> @_course.DifficultyLevel</span>
+                        @if (_courseStructure != null)
+                        {
+                            <span><i class="bi bi-collection"></i> @_courseStructure.Modules.Count modules</span>
+                            <span><i class="bi bi-play-circle"></i> @_courseStructure.TotalLectures lectures</span>
+                            <span><i class="bi bi-clock"></i> @FormatDuration(_courseStructure.TotalDurationMinutes) total</span>
+                        }
+                    </div>
+                    <div class="d-flex gap-2 mb-3">
+                        @if (_course.IsFeatured)
+                        {
+                            <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Featured</span>
+                        }
+                        @if (_course.Price == 0)
+                        {
+                            <span class="badge bg-success">Free</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card shadow-lg">
+                        @if (!string.IsNullOrEmpty(_course.ThumbnailUrl))
+                        {
+                            <img src="@_course.ThumbnailUrl" class="card-img-top" alt="@_course.Title" style="height: 200px; object-fit: cover;">
+                        }
+                        <div class="card-body">
+                            <AuthorizeView>
+                                <Authorized>
+                                    @if (_isEnrolled)
+                                    {
+                                        <a href="/course/@CourseId/learn" class="btn btn-primary w-100 mb-2">
+                                            <i class="bi bi-play-circle"></i> Continue Learning
+                                        </a>
+                                        <div class="progress mb-2" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: @_progressPercentage%"></div>
+                                        </div>
+                                        <small class="text-muted">@_progressPercentage% Complete</small>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-primary w-100" @onclick="EnrollInCourse" disabled="@_enrolling">
+                                            @if (_enrolling)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                            }
+                                            <i class="bi bi-plus-circle"></i> Enroll Now
+                                        </button>
+                                    }
+                                </Authorized>
+                                <NotAuthorized>
+                                    <a href="/login?returnUrl=/course/@CourseId" class="btn btn-primary w-100">
+                                        <i class="bi bi-box-arrow-in-right"></i> Sign in to Enroll
+                                    </a>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                            
+                            <hr />
+                            <h6 class="fw-bold mb-3">This course includes:</h6>
+                            <ul class="list-unstyled">
+                                @if (_courseStructure != null)
+                                {
+                                    <li class="mb-2"><i class="bi bi-play-circle text-primary"></i> @_courseStructure.TotalLectures lectures</li>
+                                    <li class="mb-2"><i class="bi bi-clock text-primary"></i> @FormatDuration(_courseStructure.TotalDurationMinutes) of content</li>
+                                }
+                                <li class="mb-2"><i class="bi bi-device-laptop text-primary"></i> Access on desktop and mobile</li>
+                                <li class="mb-2"><i class="bi bi-infinity text-primary"></i> Full lifetime access</li>
+                            </ul>
+                            
+                            @if (_course.Price > 0)
+                            {
+                                <h3 class="text-primary fw-bold mb-3">$@_course.Price.ToString("F2")</h3>
+                            }
+                            else
+                            {
+                                <h3 class="text-success fw-bold mb-3">FREE</h3>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Content Tabs -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs mb-4">
+                    <li class="nav-item">
+                        <button class="nav-link @(_activeTab == "overview" ? "active" : "")" @onclick='() => _activeTab = "overview"'>
+                            Overview
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(_activeTab == "curriculum" ? "active" : "")" @onclick='() => _activeTab = "curriculum"'>
+                            Curriculum
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(_activeTab == "reviews" ? "active" : "")" @onclick='() => _activeTab = "reviews"'>
+                            Reviews
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Overview Tab -->
+                @if (_activeTab == "overview")
+                {
+                    <div class="course-overview">
+                        <h3 class="mb-4">About This Course</h3>
+                        @if (!string.IsNullOrEmpty(_course.FullDescription))
+                        {
+                            <p class="text-muted">@_course.FullDescription</p>
+                        }
+                        else
+                        {
+                            <p class="text-muted">@_course.ShortDescription</p>
+                        }
+
+                        @if (_course.LearningObjectives?.Any() == true)
+                        {
+                            <h4 class="mt-4 mb-3">What You'll Learn</h4>
+                            <div class="row">
+                                @foreach (var objective in _course.LearningObjectives)
+                                {
+                                    <div class="col-md-6 mb-2">
+                                        <div class="d-flex">
+                                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                            <span>@objective</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (_course.Prerequisites?.Any() == true)
+                        {
+                            <h4 class="mt-4 mb-3">Prerequisites</h4>
+                            <ul>
+                                @foreach (var prerequisite in _course.Prerequisites)
+                                {
+                                    <li>@prerequisite</li>
+                                }
+                            </ul>
+                        }
+
+                        @if (_course.Tags?.Any() == true)
+                        {
+                            <h4 class="mt-4 mb-3">Tags</h4>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var tag in _course.Tags)
+                                {
+                                    <span class="badge bg-secondary">@tag</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Curriculum Tab -->
+                @if (_activeTab == "curriculum" && _courseStructure != null)
+                {
+                    <div class="course-curriculum">
+                        <h3 class="mb-4">Course Curriculum</h3>
+                        @foreach (var module in _courseStructure.Modules.OrderBy(m => m.OrderIndex))
+                        {
+                            <div class="card mb-3">
+                                <div class="card-header bg-light" @onclick="() => ToggleModule(module.Id)" style="cursor: pointer;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">
+                                            <i class="bi @(_expandedModules.Contains(module.Id) ? "bi-chevron-down" : "bi-chevron-right")"></i>
+                                            Module @(module.OrderIndex + 1): @module.Title
+                                        </h5>
+                                        <span class="text-muted">@module.Contents.Count lectures</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(module.Description))
+                                    {
+                                        <p class="text-muted small mb-0 mt-2">@module.Description</p>
+                                    }
+                                </div>
+                                @if (_expandedModules.Contains(module.Id))
+                                {
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            @foreach (var content in module.Contents.OrderBy(c => c.OrderIndex))
+                                            {
+                                                <li class="list-group-item">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <i class="bi @GetContentIcon(content.ContentType) text-primary me-2"></i>
+                                                            <span>@content.Title</span>
+                                                            @if (content.IsFreePreview)
+                                                            {
+                                                                <span class="badge bg-success ms-2">Preview</span>
+                                                            }
+                                                        </div>
+                                                        @if (content.DurationMinutes.HasValue)
+                                                        {
+                                                            <small class="text-muted">@content.DurationMinutes min</small>
+                                                        }
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Reviews Tab -->
+                @if (_activeTab == "reviews")
+                {
+                    <div class="course-reviews">
+                        <h3 class="mb-4">Student Reviews</h3>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> Reviews feature coming soon!
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Course Info</h5>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <strong>Level:</strong> @_course.DifficultyLevel
+                            </li>
+                            <li class="mb-2">
+                                <strong>Students Enrolled:</strong> @_course.EnrollmentCount
+                            </li>
+                            @if (_courseStructure != null)
+                            {
+                                <li class="mb-2">
+                                    <strong>Total Modules:</strong> @_courseStructure.Modules.Count
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Total Lectures:</strong> @_courseStructure.TotalLectures
+                                </li>
+                            }
+                            @if (!string.IsNullOrEmpty(_course.CreatedByUserName))
+                            {
+                                <li class="mb-2">
+                                    <strong>Instructor:</strong> @_course.CreatedByUserName
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Share This Course</h5>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="ShareOnTwitter">
+                                <i class="bi bi-twitter"></i>
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="ShareOnFacebook">
+                                <i class="bi bi-facebook"></i>
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm flex-fill" @onclick="ShareOnLinkedIn">
+                                <i class="bi bi-linkedin"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm flex-fill" @onclick="CopyLink">
+                                <i class="bi bi-link-45deg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container text-center py-5">
+        <i class="bi bi-exclamation-circle fs-1 text-muted"></i>
+        <h3 class="mt-3">Course Not Found</h3>
+        <p class="text-muted">The course you're looking for doesn't exist or has been removed.</p>
+        <a href="/courses" class="btn btn-primary">Browse All Courses</a>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header @(_messageType == "success" ? "bg-success text-white" : "bg-danger text-white")">
+                <strong class="me-auto">
+                    @if (_messageType == "success")
+                    {
+                        <i class="bi bi-check-circle"></i>
+                        <span>Success</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-exclamation-circle"></i>
+                        <span>Error</span>
+                    }
+                </strong>
+                <button type="button" class="btn-close" @onclick='() => _message = string.Empty'></button>
+            </div>
+            <div class="toast-body">
+                @_message
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .course-header {
+        position: relative;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 400px;
+        margin-bottom: 2rem;
+    }
+
+    .cover-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-size: cover;
+        background-position: center;
+        opacity: 0.3;
+    }
+
+    .cover-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+    }
+
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border-color: transparent;
+        color: #0d6efd;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background-color: transparent;
+        border-color: transparent transparent #0d6efd;
+        font-weight: 600;
+    }
+</style>
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+
+    private CourseDto? _course;
+    private CourseStructureDto? _courseStructure;
+    private bool _loading = true;
+    private bool _isEnrolled;
+    private bool _enrolling;
+    private int _progressPercentage;
+    private string _activeTab = "overview";
+    private HashSet<int> _expandedModules = new();
+    private string? _message;
+    private string _messageType = "success";
+    private string? _userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadCourseData();
+    }
+
+    private async Task LoadCourseData()
+    {
+        _loading = true;
+        try
+        {
+            _course = await CourseService.GetCourseByIdAsync(CourseId);
+            if (_course == null)
+            {
+                _loading = false;
+                return;
+            }
+
+            _courseStructure = await ContentService.GetCourseStructureAsync(CourseId, _userId);
+            
+            // Expand first module by default
+            if (_courseStructure.Modules.Any())
+            {
+                _expandedModules.Add(_courseStructure.Modules.First().Id);
+            }
+
+            // Check if user is enrolled
+            if (!string.IsNullOrEmpty(_userId))
+            {
+                var enrolledCourseIds = await CourseService.GetUserEnrolledCourseIdsAsync(_userId);
+                _isEnrolled = enrolledCourseIds.Contains(CourseId);
+                
+                // TODO: Get actual progress
+                _progressPercentage = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading course: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task EnrollInCourse()
+    {
+        if (string.IsNullOrEmpty(_userId))
+            return;
+
+        _enrolling = true;
+        try
+        {
+            var result = await CourseService.EnrollUserAsync(CourseId, _userId);
+            if (result.Success)
+            {
+                _message = "Successfully enrolled in the course!";
+                _messageType = "success";
+                _isEnrolled = true;
+                
+                await Task.Delay(1500);
+                Navigation.NavigateTo($"/course/{CourseId}/learn");
+            }
+            else
+            {
+                _message = result.Message;
+                _messageType = "error";
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error enrolling in course: {ex.Message}";
+            _messageType = "error";
+        }
+        finally
+        {
+            _enrolling = false;
+        }
+    }
+
+    private void ToggleModule(int moduleId)
+    {
+        if (_expandedModules.Contains(moduleId))
+            _expandedModules.Remove(moduleId);
+        else
+            _expandedModules.Add(moduleId);
+    }
+
+    private string GetContentIcon(string contentType)
+    {
+        return contentType switch
+        {
+            "Video" => "bi-play-circle-fill",
+            "Document" => "bi-file-earmark-text-fill",
+            "PDF" => "bi-file-earmark-pdf-fill",
+            "Audio" => "bi-music-note-beamed",
+            "Quiz" => "bi-question-circle-fill",
+            "ExternalLink" => "bi-link-45deg",
+            _ => "bi-file-earmark"
+        };
+    }
+
+    private string FormatDuration(int minutes)
+    {
+        if (minutes < 60)
+            return $"{minutes}m";
+        
+        var hours = minutes / 60;
+        var mins = minutes % 60;
+        return mins > 0 ? $"{hours}h {mins}m" : $"{hours}h";
+    }
+
+    private void ShareOnTwitter()
+    {
+        var url = $"https://twitter.com/intent/tweet?text=Check out this course: {_course?.Title}&url={Navigation.Uri}";
+        Navigation.NavigateTo(url, true);
+    }
+
+    private void ShareOnFacebook()
+    {
+        var url = $"https://www.facebook.com/sharer/sharer.php?u={Navigation.Uri}";
+        Navigation.NavigateTo(url, true);
+    }
+
+    private void ShareOnLinkedIn()
+    {
+        var url = $"https://www.linkedin.com/sharing/share-offsite/?url={Navigation.Uri}";
+        Navigation.NavigateTo(url, true);
+    }
+
+    private async Task CopyLink()
+    {
+        _message = "Link copied to clipboard!";
+        _messageType = "success";
+        await Task.Delay(2000);
+        _message = string.Empty;
+    }
+}
+

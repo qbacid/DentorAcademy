@@ -1,0 +1,117 @@
+@using Dentor.Solutions.Academy.Components.Admin.Courses
+@implements IDialogContentComponent<CourseAssignmentData>
+
+<FluentDialogHeader>
+    <FluentLabel Typo="Typography.PaneHeader">
+        Manage Course Assignments
+    </FluentLabel>
+    <FluentDivider Orientation="Orientation.Horizontal"/>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentTabs @bind-ActiveTabId="@_activeTabId">
+        <FluentTab Id="students" Label="Assign Students">
+            <FluentIcon Value="@(new Icons.Regular.Size20.People())" Slot="start"/>
+        </FluentTab>
+        <FluentTab Id="instructors" Label="Assign Instructors">
+            <FluentIcon Value="@(new Icons.Regular.Size20.PersonBoard())" Slot="start"/>
+        </FluentTab>
+    </FluentTabs>
+
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Style="margin-top: 16px;">
+        @if (_activeTabId == "students")
+        {
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Assign Students to Course</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Style="color: #666;">Select students to enroll in this course</FluentLabel>
+            
+            <FluentSearch @bind-Value="@Content.StudentSearchTerm"
+                         Placeholder="Search students..."
+                         Style="width: 100%;"/>
+
+            <FluentStack Orientation="Orientation.Vertical" Style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 4px;">
+                @if (Content.FilteredStudents.Any())
+                {
+                    @foreach (var student in Content.FilteredStudents)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal"
+                                    VerticalAlignment="VerticalAlignment.Center"
+                                    Style="padding: 12px; border-bottom: 1px solid #f0f0f0;">
+                            <FluentCheckbox CheckState="@student.IsSelected"
+                                          ValueChanged="@(() => OnStudentToggle(student))"/>
+                            <FluentStack Orientation="Orientation.Vertical" Style="margin-left: 8px;">
+                                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@student.UserName</FluentLabel>
+                                <FluentLabel Typo="Typography.Body" Style="font-size: 0.875rem; color: #666;">@student.Email</FluentLabel>
+                            </FluentStack>
+                        </FluentStack>
+                    }
+                }
+                else
+                {
+                    <FluentStack Orientation="Orientation.Vertical"
+                                HorizontalAlignment="HorizontalAlignment.Center"
+                                Style="padding: 32px;">
+                        <FluentIcon Value="@(new Icons.Regular.Size48.Info())" Color="Color.Neutral"/>
+                        <FluentLabel>No students found.</FluentLabel>
+                    </FluentStack>
+                }
+            </FluentStack>
+        }
+        else if (_activeTabId == "instructors")
+        {
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Assign Instructors to Course</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Style="color: #666;">Select instructors to teach this course</FluentLabel>
+            
+            <FluentSearch @bind-Value="@Content.InstructorSearchTerm"
+                         Placeholder="Search instructors..."
+                         Style="width: 100%;"/>
+
+            <FluentStack Orientation="Orientation.Vertical" Style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 4px;">
+                @if (Content.FilteredInstructors.Any())
+                {
+                    @foreach (var instructor in Content.FilteredInstructors)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal"
+                                    VerticalAlignment="VerticalAlignment.Center"
+                                    Style="padding: 12px; border-bottom: 1px solid #f0f0f0;">
+                            <FluentCheckbox CheckState="@instructor.IsSelected"
+                                          ValueChanged="@(() => OnInstructorToggle(instructor))"/>
+                            <FluentStack Orientation="Orientation.Vertical" Style="margin-left: 8px;">
+                                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@instructor.UserName</FluentLabel>
+                                <FluentLabel Typo="Typography.Body" Style="font-size: 0.875rem; color: #666;">@instructor.Email</FluentLabel>
+                            </FluentStack>
+                        </FluentStack>
+                    }
+                }
+                else
+                {
+                    <FluentStack Orientation="Orientation.Vertical"
+                                HorizontalAlignment="HorizontalAlignment.Center"
+                                Style="padding: 32px;">
+                        <FluentIcon Value="@(new Icons.Regular.Size48.Info())" Color="Color.Neutral"/>
+                        <FluentLabel>No instructors found.</FluentLabel>
+                    </FluentStack>
+                }
+            </FluentStack>
+        }
+    </FluentStack>
+</FluentDialogBody>
+
+@code {
+    [Parameter] public CourseAssignmentData Content { get; set; } = default!;
+    [CascadingParameter] public FluentDialog? Dialog { get; set; }
+
+    private string _activeTabId = "students";
+
+    private void OnStudentToggle(UserSelectionDto student)
+    {
+        student.IsSelected = !student.IsSelected;
+        StateHasChanged();
+    }
+
+    private void OnInstructorToggle(UserSelectionDto instructor)
+    {
+        instructor.IsSelected = !instructor.IsSelected;
+        StateHasChanged();
+    }
+}
+

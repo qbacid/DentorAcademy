@@ -33,6 +33,14 @@ public class Question
     [Column("explanation_image_url")]
     public string? ExplanationImageUrl { get; set; } // Optional image to help explain the answer
 
+    [MaxLength(500)]
+    [Column("question_image_url")]
+    public string? QuestionImageUrl { get; set; } // Optional image as part of the question
+    
+    [MaxLength(500)]
+    [Column("question_audio_url")]
+    public string? QuestionAudioUrl { get; set; } // Optional audio as part of the question
+
     [Column("points")]
     public decimal Points { get; set; } = 1.0m;
 

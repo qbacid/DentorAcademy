@@ -106,12 +106,21 @@ public class CourseManagementService : ICourseManagementService
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
             
+            // Get category name if CategoryId is provided
+            string? categoryName = null;
+            if (dto.CategoryId.HasValue)
+            {
+                var category = await context.CourseCategories.FindAsync(dto.CategoryId.Value);
+                categoryName = category?.Name;
+            }
+            
             var course = new Course
             {
                 Title = dto.Title,
                 ShortDescription = dto.ShortDescription,
                 FullDescription = dto.FullDescription,
                 CategoryId = dto.CategoryId,
+                Category = categoryName, // Set the legacy Category field
                 ThumbnailUrl = dto.ThumbnailUrl,
                 CoverImageUrl = dto.CoverImageUrl,
                 // Store uploaded images
@@ -335,7 +344,7 @@ public class CourseManagementService : ICourseManagementService
             Title = m.Title,
             Description = m.Description,
             OrderIndex = m.OrderIndex,
-            EstimatedDurationMinutes = m.EstimatedDurationMinutes ?? 0,
+            EstimatedDurationMinutes = m.EstimatedDurationMinutes,
             IsPublished = m.IsPublished,
             ContentCount = m.Contents.Count,
             Contents = m.Contents.OrderBy(c => c.OrderIndex).Select(c => new CourseContentDto
@@ -344,7 +353,7 @@ public class CourseManagementService : ICourseManagementService
                 CourseModuleId = c.CourseModuleId,
                 Title = c.Title,
                 Description = c.Description,
-                ContentType = Enum.Parse<ContentType>(c.ContentType, true),
+                ContentType = c.ContentType, // Already a string
                 OrderIndex = c.OrderIndex,
                 DurationMinutes = c.DurationMinutes ?? 0,
                 BlobUrl = c.BlobUrl,
@@ -385,7 +394,7 @@ public class CourseManagementService : ICourseManagementService
                 Id = c.Id,
                 CourseModuleId = c.CourseModuleId,
                 Title = c.Title,
-                ContentType = Enum.Parse<ContentType>(c.ContentType),
+                ContentType = c.ContentType, // Already a string
                 OrderIndex = c.OrderIndex,
                 IsPublished = c.IsPublished
             }).ToList()
@@ -546,28 +555,27 @@ public class CourseManagementService : ICourseManagementService
         var contents = await context.CourseContents
             .Where(c => c.CourseModuleId == moduleId)
             .OrderBy(c => c.OrderIndex)
-            .Select(c => new CourseContentDto
-            {
-                Id = c.Id,
-                CourseModuleId = c.CourseModuleId,
-                Title = c.Title,
-                Description = c.Description,
-                ContentType = Enum.Parse<ContentType>(c.ContentType),
-                OrderIndex = c.OrderIndex,
-                DurationMinutes = c.DurationMinutes ?? 0,
-                BlobUrl = c.BlobUrl,
-                FileSizeBytes = c.FileSizeBytes,
-                MimeType = c.MimeType,
-                QuizId = c.QuizId,
-                ExternalUrl = c.ExternalUrl,
-                IsFreePreview = c.IsFreePreview,
-                IsDownloadable = c.IsDownloadable,
-                IsMandatory = c.IsMandatory,
-                IsPublished = c.IsPublished
-            })
             .ToListAsync();
 
-        return contents;
+        return contents.Select(c => new CourseContentDto
+        {
+            Id = c.Id,
+            CourseModuleId = c.CourseModuleId,
+            Title = c.Title,
+            Description = c.Description,
+            ContentType = c.ContentType, // Already a string
+            OrderIndex = c.OrderIndex,
+            DurationMinutes = c.DurationMinutes,
+            BlobUrl = c.BlobUrl,
+            FileSizeBytes = c.FileSizeBytes,
+            MimeType = c.MimeType,
+            QuizId = c.QuizId,
+            ExternalUrl = c.ExternalUrl,
+            IsFreePreview = c.IsFreePreview,
+            IsDownloadable = c.IsDownloadable,
+            IsMandatory = c.IsMandatory,
+            IsPublished = c.IsPublished
+        }).ToList();
     }
 
     public async Task<CourseContentDto?> GetContentByIdAsync(int id)
@@ -583,9 +591,9 @@ public class CourseManagementService : ICourseManagementService
             CourseModuleId = content.CourseModuleId,
             Title = content.Title,
             Description = content.Description,
-            ContentType = Enum.Parse<ContentType>(content.ContentType),
+            ContentType = content.ContentType, // Already a string
             OrderIndex = content.OrderIndex,
-            DurationMinutes = content.DurationMinutes ?? 0,
+            DurationMinutes = content.DurationMinutes,
             BlobUrl = content.BlobUrl,
             FileSizeBytes = content.FileSizeBytes,
             MimeType = content.MimeType,
@@ -611,7 +619,7 @@ public class CourseManagementService : ICourseManagementService
                 CourseModuleId = dto.CourseModuleId,
                 Title = dto.Title,
                 Description = dto.Description,
-                ContentType = dto.ContentType.ToString(),
+                ContentType = dto.ContentType, // Already a string, no ToString() needed
                 OrderIndex = dto.OrderIndex,
                 DurationMinutes = dto.DurationMinutes,
                 BlobContainerName = null, // Set when uploading to Azure

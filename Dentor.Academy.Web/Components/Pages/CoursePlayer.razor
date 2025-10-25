@@ -1,0 +1,578 @@
+@page "/course/{CourseId:int}/learn"
+@using Dentor.Academy.Web.DTOs.Course
+@using System.Security.Claims
+@inject ICourseContentService ContentService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>@(_courseStructure?.CourseTitle ?? "Course Player")</PageTitle>
+
+<div class="course-player-container">
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3">Loading course...</p>
+        </div>
+    }
+    else if (_courseStructure != null)
+    {
+        <div class="row g-0 vh-100">
+            <!-- Sidebar - Course Curriculum -->
+            <div class="col-md-4 col-lg-3 sidebar border-end">
+                <div class="sidebar-header p-3 border-bottom bg-light">
+                    <button class="btn btn-sm btn-outline-secondary float-end d-md-none" @onclick="ToggleSidebar">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <h5 class="mb-1">@_courseStructure.CourseTitle</h5>
+                    <div class="progress mt-2" style="height: 8px;">
+                        <div class="progress-bar bg-success" style="width: @ProgressPercentage%"></div>
+                    </div>
+                    <small class="text-muted">@CompletedLectures / @_courseStructure.TotalLectures lectures completed (@ProgressPercentage%)</small>
+                </div>
+
+                <div class="sidebar-content overflow-auto" style="height: calc(100vh - 120px);">
+                    @foreach (var module in _courseStructure.Modules)
+                    {
+                        <div class="module-section">
+                            <div class="module-header p-3 bg-light border-bottom" 
+                                 @onclick="() => ToggleModule(module.Id)"
+                                 style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="flex-grow-1">
+                                        <strong>@module.Title</strong>
+                                        <br/>
+                                        <small class="text-muted">
+                                            @module.Contents.Count(c => c.IsCompleted) / @module.Contents.Count
+                                        </small>
+                                    </div>
+                                    <i class="bi @(_expandedModules.Contains(module.Id) ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                </div>
+                            </div>
+
+                            @if (_expandedModules.Contains(module.Id))
+                            {
+                                <div class="module-content">
+                                    @foreach (var content in module.Contents.OrderBy(c => c.OrderIndex))
+                                    {
+                                        <div class="content-item p-3 border-bottom @(IsCurrentContent(content.Id) ? "active" : "")"
+                                             @onclick="() => LoadContent(content)"
+                                             style="cursor: pointer;">
+                                            <div class="d-flex align-items-start">
+                                                <div class="me-2">
+                                                    @if (content.IsCompleted)
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-circle text-muted"></i>
+                                                    }
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <i class="bi @GetContentIcon(content.ContentType) text-primary"></i>
+                                                        <span class="@(IsCurrentContent(content.Id) ? "fw-bold" : "")">@content.Title</span>
+                                                    </div>
+                                                    @if (content.DurationMinutes.HasValue)
+                                                    {
+                                                        <small class="text-muted">@content.DurationMinutes min</small>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="col-md-8 col-lg-9 main-content">
+                <!-- Mobile Toggle Button -->
+                <button class="btn btn-primary d-md-none m-3" @onclick="ToggleSidebar">
+                    <i class="bi bi-list"></i> Course Content
+                </button>
+
+                @if (_currentContent != null)
+                {
+                    <div class="content-player">
+                        <!-- Content Header -->
+                        <div class="content-header p-4 border-bottom bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3>@_currentContent.Title</h3>
+                                    @if (!string.IsNullOrEmpty(_currentContent.Description))
+                                    {
+                                        <p class="text-muted mb-0">@_currentContent.Description</p>
+                                    }
+                                </div>
+                                <div class="d-flex gap-2">
+                                    @if (_currentContent.IsDownloadable && !string.IsNullOrEmpty(_currentContent.BlobUrl))
+                                    {
+                                        <a href="@_currentContent.BlobUrl" class="btn btn-outline-primary" download>
+                                            <i class="bi bi-download"></i> Download
+                                        </a>
+                                    }
+                                    @if (!_currentContent.IsCompleted)
+                                    {
+                                        <button class="btn btn-success" @onclick="MarkAsComplete">
+                                            <i class="bi bi-check-circle"></i> Mark as Complete
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-success" disabled>
+                                            <i class="bi bi-check-circle-fill"></i> Completed
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content Body -->
+                        <div class="content-body p-4">
+                            @if (_currentContent.ContentType == "Video")
+                            {
+                                <div class="video-container mb-4">
+                                    @if (!string.IsNullOrEmpty(_currentContent.ExternalUrl))
+                                    {
+                                        @if (_currentContent.ExternalUrl.Contains("youtube.com") || _currentContent.ExternalUrl.Contains("youtu.be"))
+                                        {
+                                            <div class="ratio ratio-16x9">
+                                                <iframe src="@GetYouTubeEmbedUrl(_currentContent.ExternalUrl)" 
+                                                        allowfullscreen></iframe>
+                                            </div>
+                                        }
+                                        else if (_currentContent.ExternalUrl.Contains("vimeo.com"))
+                                        {
+                                            <div class="ratio ratio-16x9">
+                                                <iframe src="@GetVimeoEmbedUrl(_currentContent.ExternalUrl)" 
+                                                        allowfullscreen></iframe>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="ratio ratio-16x9">
+                                                <iframe src="@_currentContent.ExternalUrl" allowfullscreen></iframe>
+                                            </div>
+                                        }
+                                    }
+                                    else if (!string.IsNullOrEmpty(_currentContent.BlobUrl))
+                                    {
+                                        <video class="w-100" controls>
+                                            <source src="@_currentContent.BlobUrl" type="@_currentContent.MimeType">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Video content not available yet.
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_currentContent.ContentType == "Audio")
+                            {
+                                <div class="audio-container mb-4">
+                                    @if (!string.IsNullOrEmpty(_currentContent.BlobUrl))
+                                    {
+                                        <audio class="w-100" controls>
+                                            <source src="@_currentContent.BlobUrl" type="@_currentContent.MimeType">
+                                            Your browser does not support the audio tag.
+                                        </audio>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Audio content not available yet.
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_currentContent.ContentType == "PDF" || _currentContent.ContentType == "Document")
+                            {
+                                <div class="document-container mb-4">
+                                    @if (!string.IsNullOrEmpty(_currentContent.BlobUrl))
+                                    {
+                                        @if (_currentContent.ContentType == "PDF")
+                                        {
+                                            <iframe src="@_currentContent.BlobUrl" 
+                                                    style="width: 100%; height: 800px; border: none;"
+                                                    type="application/pdf"></iframe>
+                                        }
+                                        else
+                                        {
+                                            <div class="card">
+                                                <div class="card-body text-center py-5">
+                                                    <i class="bi bi-file-earmark-text fs-1 text-primary"></i>
+                                                    <h5 class="mt-3">@_currentContent.Title</h5>
+                                                    <p class="text-muted">@FormatFileSize(_currentContent.FileSizeBytes)</p>
+                                                    <a href="@_currentContent.BlobUrl" class="btn btn-primary" download>
+                                                        <i class="bi bi-download"></i> Download Document
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Document not available yet.
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_currentContent.ContentType == "Quiz")
+                            {
+                                <div class="quiz-container">
+                                    @if (_currentContent.QuizId.HasValue)
+                                    {
+                                        <EmbeddedQuiz QuizId="_currentContent.QuizId.Value" 
+                                                     OnQuizCompleted="HandleQuizCompleted" />
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Quiz not configured for this content.
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_currentContent.ContentType == "ExternalLink")
+                            {
+                                <div class="external-link-container">
+                                    @if (!string.IsNullOrEmpty(_currentContent.ExternalUrl))
+                                    {
+                                        <div class="card">
+                                            <div class="card-body text-center py-5">
+                                                <i class="bi bi-link-45deg fs-1 text-primary"></i>
+                                                <h4 class="mt-3">External Resource</h4>
+                                                <p class="text-muted">This content is hosted externally.</p>
+                                                <a href="@_currentContent.ExternalUrl" target="_blank" class="btn btn-primary">
+                                                    <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                                </a>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Navigation Footer -->
+                        <div class="content-footer p-4 border-top bg-light">
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-outline-secondary" 
+                                        @onclick="NavigatePrevious"
+                                        disabled="@(!CanNavigatePrevious())">
+                                    <i class="bi bi-arrow-left"></i> Previous
+                                </button>
+                                <button class="btn btn-primary" 
+                                        @onclick="NavigateNext"
+                                        disabled="@(!CanNavigateNext())">
+                                    Next <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 100vh;">
+                        <div class="text-center">
+                            <i class="bi bi-play-circle fs-1 text-muted"></i>
+                            <h4 class="mt-3">Select a lecture to begin</h4>
+                            <p class="text-muted">Choose a lecture from the sidebar to start learning</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .course-player-container {
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        background-color: #f8f9fa;
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+        transform: translateX(-100%);
+    }
+
+    @@media (min-width: 768px) {
+        .sidebar.collapsed {
+            transform: translateX(0);
+        }
+    }
+
+    .sidebar-content {
+        overflow-y: auto;
+    }
+
+    .module-header:hover {
+        background-color: #e9ecef !important;
+    }
+
+    .content-item {
+        transition: all 0.2s ease;
+    }
+
+    .content-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .content-item.active {
+        background-color: #e7f3ff;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .main-content {
+        overflow-y: auto;
+        height: 100vh;
+    }
+
+    .video-container iframe,
+    .video-container video {
+        border-radius: 8px;
+    }
+
+    .content-body {
+        min-height: calc(100vh - 250px);
+    }
+</style>
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+
+    private CourseStructureDto? _courseStructure;
+    private CourseContentDto? _currentContent;
+    private bool _isLoading = true;
+    private bool _sidebarCollapsed;
+    private HashSet<int> _expandedModules = new();
+    private string? _userId;
+    
+    private int CompletedLectures => _courseStructure?.Modules
+        .SelectMany<CourseModuleDto, CourseContentDto>(m => m.Contents)
+        .Count(c => c.IsCompleted) ?? 0;
+    
+    private int ProgressPercentage => _courseStructure?.TotalLectures > 0
+        ? (CompletedLectures * 100 / _courseStructure.TotalLectures)
+        : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadCourseStructure();
+    }
+
+    private async Task LoadCourseStructure()
+    {
+        _isLoading = true;
+        try
+        {
+            _courseStructure = await ContentService.GetCourseStructureAsync(CourseId, _userId);
+            
+            // Auto-expand all modules
+            _expandedModules = _courseStructure.Modules.Select<CourseModuleDto, int>(m => m.Id).ToHashSet();
+
+            // Load first incomplete or first content
+            var firstIncomplete = _courseStructure.Modules
+                .SelectMany<CourseModuleDto, CourseContentDto>(m => m.Contents)
+                .FirstOrDefault(c => !c.IsCompleted);
+
+            if (firstIncomplete != null)
+            {
+                _currentContent = firstIncomplete;
+            }
+            else if (_courseStructure.Modules.Any() && _courseStructure.Modules.First().Contents.Any())
+            {
+                _currentContent = _courseStructure.Modules.First().Contents.First();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading course: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        _sidebarCollapsed = !_sidebarCollapsed;
+    }
+
+    private void ToggleModule(int moduleId)
+    {
+        if (_expandedModules.Contains(moduleId))
+            _expandedModules.Remove(moduleId);
+        else
+            _expandedModules.Add(moduleId);
+    }
+
+    private void LoadContent(CourseContentDto content)
+    {
+        _currentContent = content;
+        _sidebarCollapsed = true; // Auto-collapse on mobile
+    }
+
+    private bool IsCurrentContent(int contentId)
+    {
+        return _currentContent?.Id == contentId;
+    }
+
+    private async Task MarkAsComplete()
+    {
+        if (_currentContent == null || string.IsNullOrEmpty(_userId))
+            return;
+
+        try
+        {
+            // TODO: Call progress tracking service
+            _currentContent.IsCompleted = true;
+            
+            // Auto-navigate to next
+            if (CanNavigateNext())
+            {
+                await Task.Delay(500);
+                NavigateNext();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking content as complete: {ex.Message}");
+        }
+    }
+
+    private bool CanNavigatePrevious()
+    {
+        if (_courseStructure == null || _currentContent == null)
+            return false;
+
+        var allContents = _courseStructure.Modules
+            .SelectMany<CourseModuleDto, CourseContentDto>(m => m.Contents.OrderBy(c => c.OrderIndex))
+            .ToList();
+
+        var currentIndex = allContents.FindIndex(c => c.Id == _currentContent.Id);
+        return currentIndex > 0;
+    }
+
+    private bool CanNavigateNext()
+    {
+        if (_courseStructure == null || _currentContent == null)
+            return false;
+
+        var allContents = _courseStructure.Modules
+            .SelectMany<CourseModuleDto, CourseContentDto>(m => m.Contents.OrderBy(c => c.OrderIndex))
+            .ToList();
+
+        var currentIndex = allContents.FindIndex(c => c.Id == _currentContent.Id);
+        return currentIndex >= 0 && currentIndex < allContents.Count - 1;
+    }
+
+    private void NavigatePrevious()
+    {
+        if (!CanNavigatePrevious() || _courseStructure == null || _currentContent == null)
+            return;
+
+        var allContents = _courseStructure.Modules
+            .SelectMany<CourseModuleDto, CourseContentDto>(m => m.Contents.OrderBy(c => c.OrderIndex))
+            .ToList();
+
+        var currentIndex = allContents.FindIndex(c => c.Id == _currentContent.Id);
+        if (currentIndex > 0)
+        {
+            _currentContent = allContents[currentIndex - 1];
+        }
+    }
+
+    private void NavigateNext()
+    {
+        if (!CanNavigateNext() || _courseStructure == null || _currentContent == null)
+            return;
+
+        var allContents = _courseStructure.Modules
+            .SelectMany<CourseModuleDto, CourseContentDto>(m => m.Contents.OrderBy(c => c.OrderIndex))
+            .ToList();
+
+        var currentIndex = allContents.FindIndex(c => c.Id == _currentContent.Id);
+        if (currentIndex >= 0 && currentIndex < allContents.Count - 1)
+        {
+            _currentContent = allContents[currentIndex + 1];
+        }
+    }
+
+    private string GetContentIcon(string contentType)
+    {
+        return contentType switch
+        {
+            "Video" => "bi-play-circle-fill",
+            "Document" => "bi-file-earmark-text-fill",
+            "PDF" => "bi-file-earmark-pdf-fill",
+            "Audio" => "bi-music-note-beamed",
+            "Quiz" => "bi-question-circle-fill",
+            "ExternalLink" => "bi-link-45deg",
+            _ => "bi-file-earmark"
+        };
+    }
+
+    private string GetYouTubeEmbedUrl(string url)
+    {
+        var videoId = url.Split("v=").LastOrDefault()?.Split("&").FirstOrDefault()
+                      ?? url.Split("/").LastOrDefault();
+        return $"https://www.youtube.com/embed/{videoId}";
+    }
+
+    private string GetVimeoEmbedUrl(string url)
+    {
+        var videoId = url.Split("/").LastOrDefault();
+        return $"https://player.vimeo.com/video/{videoId}";
+    }
+
+    private string FormatFileSize(long? bytes)
+    {
+        if (!bytes.HasValue || bytes == 0)
+            return "Unknown size";
+
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes.Value;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private async Task HandleQuizCompleted()
+    {
+        // Mark quiz as completed
+        if (_currentContent != null)
+        {
+            _currentContent.IsCompleted = true;
+            await MarkAsComplete();
+        }
+        
+        // Optionally navigate to next content
+        if (CanNavigateNext())
+        {
+            await Task.Delay(1000); // Give user a moment
+            NavigateNext();
+        }
+    }
+}

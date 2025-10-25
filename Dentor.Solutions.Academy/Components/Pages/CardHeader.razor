@@ -1,0 +1,23 @@
+<FluentCard MinimalStyle="true">
+    <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+            <FluentIcon Value="@(IconHeader)" Color="@IconColor"/>
+            <FluentSpacer/>
+            <FluentLabel Typo="Typography.Header">@Total</FluentLabel>
+        </FluentStack>
+                    
+        <FluentStack Orientation="Orientation.Vertical">
+            <FluentDivider Orientation="Orientation.Horizontal" Style="width: 100%" />
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Normal">@Description</FluentLabel>
+        </FluentStack>
+    </FluentStack>
+</FluentCard>
+
+@code {
+    [Parameter] public Icon IconHeader { get; set; }
+    [Parameter] public Color IconColor { get; set; }
+    
+    [Parameter] public string Description { get; set; }
+    [Parameter] public int Total { get; set; }
+    
+}

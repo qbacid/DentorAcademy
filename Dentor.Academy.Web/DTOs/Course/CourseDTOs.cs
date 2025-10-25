@@ -95,6 +95,11 @@ public class CourseDto
     public List<string>? Tags { get; set; }
     public List<string>? LearningObjectives { get; set; }
     public List<string>? Prerequisites { get; set; }
+    
+    // Additional display properties
+    public int EnrollmentCount { get; set; }
+    public string? CreatedByUserName { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>
@@ -107,7 +112,7 @@ public class CourseModuleDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int OrderIndex { get; set; }
-    public int EstimatedDurationMinutes { get; set; }
+    public int? EstimatedDurationMinutes { get; set; }
     public bool IsPublished { get; set; } = true;
     public int ContentCount { get; set; }
     public List<CourseContentDto> Contents { get; set; } = new();
@@ -122,22 +127,94 @@ public class CourseContentDto
     public int CourseModuleId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public ContentType ContentType { get; set; }
+    public string ContentType { get; set; } = string.Empty; // Video, Document, PDF, Quiz, etc.
     public int OrderIndex { get; set; }
-    public int DurationMinutes { get; set; }
+    public int? DurationMinutes { get; set; }
     public string? BlobUrl { get; set; }
+    public string? ExternalUrl { get; set; }
+    public int? QuizId { get; set; }
     public long? FileSizeBytes { get; set; }
     public string? MimeType { get; set; }
-    public int? QuizId { get; set; }
-    public string? ExternalUrl { get; set; }
     public bool IsFreePreview { get; set; }
     public bool IsDownloadable { get; set; }
     public bool IsMandatory { get; set; }
-    public bool IsPublished { get; set; } = true;
+    public bool IsPublished { get; set; }
+    public bool IsCompleted { get; set; } // For student view
 }
 
 /// <summary>
-/// DTO for enrollment
+/// DTO for creating a new course module
+/// </summary>
+public class CreateCourseModuleDto
+{
+    public int CourseId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int OrderIndex { get; set; }
+    public int? EstimatedDurationMinutes { get; set; }
+}
+
+/// <summary>
+/// DTO for updating a course module
+/// </summary>
+public class UpdateCourseModuleDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int OrderIndex { get; set; }
+    public int? EstimatedDurationMinutes { get; set; }
+    public bool IsPublished { get; set; }
+}
+
+/// <summary>
+/// DTO for creating course content
+/// </summary>
+public class CreateCourseContentDto
+{
+    public int CourseModuleId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public int OrderIndex { get; set; }
+    public int? DurationMinutes { get; set; }
+    public string? ExternalUrl { get; set; }
+    public int? QuizId { get; set; }
+    public bool IsFreePreview { get; set; }
+    public bool IsDownloadable { get; set; }
+    public bool IsMandatory { get; set; }
+}
+
+/// <summary>
+/// DTO for updating course content
+/// </summary>
+public class UpdateCourseContentDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int OrderIndex { get; set; }
+    public int? DurationMinutes { get; set; }
+    public string? ExternalUrl { get; set; }
+    public int? QuizId { get; set; }
+    public bool IsFreePreview { get; set; }
+    public bool IsDownloadable { get; set; }
+    public bool IsMandatory { get; set; }
+    public bool IsPublished { get; set; }
+}
+
+/// <summary>
+/// DTO for complete course structure (curriculum)
+/// </summary>
+public class CourseStructureDto
+{
+    public int CourseId { get; set; }
+    public string CourseTitle { get; set; } = string.Empty;
+    public List<CourseModuleDto> Modules { get; set; } = new();
+    public int TotalDurationMinutes { get; set; }
+    public int TotalLectures { get; set; }
+}
+
+/// <summary>
+/// DTO for enrollment information
 /// </summary>
 public class EnrollmentDto
 {

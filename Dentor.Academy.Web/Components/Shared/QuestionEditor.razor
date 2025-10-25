@@ -1,0 +1,485 @@
+@using Dentor.Academy.Web.DTOs.Quiz
+@using Dentor.Academy.Web.Interfaces
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject IQuizManagementService QuizManagementService
+
+<div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.7); z-index: 1060;">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@(Question?.Id > 0 ? "Edit Question" : "Add New Question")</h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <EditForm Model="questionDto" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Question Text <span class="text-danger">*</span></label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="questionDto.QuestionText" 
+                                      placeholder="Enter your question here..." />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Question Type <span class="text-danger">*</span></label>
+                            <InputSelect class="form-select" @bind-Value="questionDto.QuestionType" 
+                                        @bind-Value:after="OnQuestionTypeChanged">
+                                <option value="MultipleChoice">Multiple Choice (Single Answer)</option>
+                                <option value="MultipleCheckbox">Multiple Checkbox (Multiple Answers)</option>
+                                <option value="TrueFalse">True/False</option>
+                                <option value="UserShortAnwswer">Short Answer</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Points</label>
+                            <InputNumber class="form-control" @bind-Value="questionDto.Points" min="0" step="0.5" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Order</label>
+                            <InputNumber class="form-control" @bind-Value="questionDto.OrderIndex" min="0" />
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <h6 class="mb-3">Media Attachments (Optional)</h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Question Image</label>
+                            <InputFile OnChange="HandleImageUpload" class="form-control" accept="image/*" />
+                            <small class="text-muted">Max 1MB, recommended 450x450px</small>
+                            
+                            @if (!string.IsNullOrEmpty(questionDto.QuestionImageUrl))
+                            {
+                                <div class="mt-2">
+                                    <img src="@questionDto.QuestionImageUrl" alt="Question" class="img-thumbnail" style="max-width: 200px;" />
+                                    <button type="button" class="btn btn-sm btn-danger ms-2" @onclick="() => RemoveImage()">
+                                        <i class="bi bi-x"></i> Remove
+                                    </button>
+                                </div>
+                            }
+
+                            @if (isUploadingImage)
+                            {
+                                <div class="mt-2">
+                                    <div class="spinner-border spinner-border-sm"></div> Uploading...
+                                </div>
+                            }
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Question Audio</label>
+                            <InputFile OnChange="HandleAudioUpload" class="form-control" accept="audio/*" />
+                            <small class="text-muted">Max 5MB, MP3 or WAV format</small>
+                            
+                            @if (!string.IsNullOrEmpty(questionDto.QuestionAudioUrl))
+                            {
+                                <div class="mt-2">
+                                    <audio controls class="w-100">
+                                        <source src="@questionDto.QuestionAudioUrl" />
+                                    </audio>
+                                    <button type="button" class="btn btn-sm btn-danger mt-2" @onclick="() => RemoveAudio()">
+                                        <i class="bi bi-x"></i> Remove
+                                    </button>
+                                </div>
+                            }
+
+                            @if (isUploadingAudio)
+                            {
+                                <div class="mt-2">
+                                    <div class="spinner-border spinner-border-sm"></div> Uploading...
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    @if (questionDto.QuestionType != "UserShortAnwswer")
+                    {
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6>Answer Options <span class="text-danger">*</span></h6>
+                                <button type="button" class="btn btn-sm btn-outline-success" @onclick="AddAnswerOption">
+                                    <i class="bi bi-plus"></i> Add Option
+                                </button>
+                            </div>
+
+                            @if (questionDto.QuestionType == "TrueFalse")
+                            {
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> True/False questions should have exactly 2 options.
+                                </div>
+                            }
+
+                            @for (int i = 0; i < questionDto.AnswerOptions.Count; i++)
+                            {
+                                var index = i;
+                                var option = questionDto.AnswerOptions[index];
+                                
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           checked="@option.IsCorrect"
+                                                           @onchange="e => ToggleCorrectAnswer(index, (bool)e.Value!)" />
+                                                    <label class="form-check-label text-success">
+                                                        <small>Correct</small>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-9">
+                                                <input type="text" class="form-control" 
+                                                       placeholder="Enter answer option..."
+                                                       value="@option.OptionText"
+                                                       @onchange="@(e => UpdateOptionText(index, e.Value?.ToString() ?? ""))" />
+                                            </div>
+                                            <div class="col-md-2 text-end">
+                                                @if (questionDto.AnswerOptions.Count > 2)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                            @onclick="() => RemoveAnswerOption(index)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (questionDto.QuestionType == "MultipleChoice" && !questionDto.AnswerOptions.Any(o => o.IsCorrect))
+                            {
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> Please mark one option as correct.
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <hr />
+
+                    <div class="mb-3">
+                        <label class="form-label">Explanation (Optional)</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="questionDto.Explanation" 
+                                      placeholder="Provide an explanation shown after the question is answered..." />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Explanation Image (Optional)</label>
+                        <InputFile OnChange="HandleExplanationImageUpload" class="form-control" accept="image/*" />
+                        
+                        @if (!string.IsNullOrEmpty(questionDto.ExplanationImageUrl))
+                        {
+                            <div class="mt-2">
+                                <img src="@questionDto.ExplanationImageUrl" alt="Explanation" class="img-thumbnail" style="max-width: 200px;" />
+                                <button type="button" class="btn btn-sm btn-danger ms-2" @onclick="() => RemoveExplanationImage()">
+                                    <i class="bi bi-x"></i> Remove
+                                </button>
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Save Question
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public QuestionManagementDto? Question { get; set; }
+    [Parameter] public int QuizId { get; set; }
+    [Parameter] public EventCallback<QuestionUpdateDto> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private QuestionUpdateDto questionDto = new();
+    private bool isSaving = false;
+    private bool isUploadingImage = false;
+    private bool isUploadingAudio = false;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (Question != null)
+        {
+            questionDto = new QuestionUpdateDto
+            {
+                QuestionText = Question.QuestionText,
+                QuestionType = Question.QuestionType,
+                Explanation = Question.Explanation,
+                ExplanationImageUrl = Question.ExplanationImageUrl,
+                QuestionImageUrl = Question.QuestionImageUrl,
+                QuestionAudioUrl = Question.QuestionAudioUrl,
+                Points = Question.Points,
+                OrderIndex = Question.OrderIndex,
+                AnswerOptions = Question.AnswerOptions.Select(a => new AnswerOptionUpdateDto
+                {
+                    Id = a.Id,
+                    OptionText = a.OptionText,
+                    IsCorrect = a.IsCorrect,
+                    OrderIndex = a.OrderIndex
+                }).ToList()
+            };
+        }
+        else
+        {
+            questionDto = new QuestionUpdateDto
+            {
+                QuestionType = "MultipleChoice",
+                Points = 1.0m,
+                OrderIndex = 0,
+                AnswerOptions = new List<AnswerOptionUpdateDto>
+                {
+                    new() { OptionText = "", IsCorrect = false, OrderIndex = 0 },
+                    new() { OptionText = "", IsCorrect = false, OrderIndex = 1 }
+                }
+            };
+        }
+    }
+
+    private void OnQuestionTypeChanged()
+    {
+        if (questionDto.QuestionType == "TrueFalse" && questionDto.AnswerOptions.Count != 2)
+        {
+            questionDto.AnswerOptions = new List<AnswerOptionUpdateDto>
+            {
+                new() { OptionText = "True", IsCorrect = false, OrderIndex = 0 },
+                new() { OptionText = "False", IsCorrect = false, OrderIndex = 1 }
+            };
+        }
+        else if (questionDto.QuestionType == "UserShortAnwswer")
+        {
+            questionDto.AnswerOptions.Clear();
+        }
+    }
+
+    private void AddAnswerOption()
+    {
+        questionDto.AnswerOptions.Add(new AnswerOptionUpdateDto
+        {
+            OptionText = "",
+            IsCorrect = false,
+            OrderIndex = questionDto.AnswerOptions.Count
+        });
+    }
+
+    private void RemoveAnswerOption(int index)
+    {
+        if (questionDto.AnswerOptions.Count > 2)
+        {
+            questionDto.AnswerOptions.RemoveAt(index);
+            // Reorder
+            for (int i = 0; i < questionDto.AnswerOptions.Count; i++)
+            {
+                questionDto.AnswerOptions[i].OrderIndex = i;
+            }
+        }
+    }
+
+    private void ToggleCorrectAnswer(int index, bool isCorrect)
+    {
+        if (questionDto.QuestionType == "MultipleChoice")
+        {
+            // Single correct answer - uncheck others
+            for (int i = 0; i < questionDto.AnswerOptions.Count; i++)
+            {
+                questionDto.AnswerOptions[i].IsCorrect = (i == index && isCorrect);
+            }
+        }
+        else
+        {
+            // Multiple correct answers allowed
+            questionDto.AnswerOptions[index].IsCorrect = isCorrect;
+        }
+    }
+
+    private void UpdateOptionText(int index, string text)
+    {
+        questionDto.AnswerOptions[index].OptionText = text;
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        isUploadingImage = true;
+
+        try
+        {
+            var file = e.File;
+            if (file.Size > 1024 * 1024) // 1MB
+            {
+                errorMessage = "Image file size must be less than 1MB";
+                return;
+            }
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024);
+            var result = await QuizManagementService.UploadQuestionImageAsync(stream, file.Name);
+
+            if (result.Success)
+            {
+                questionDto.QuestionImageUrl = result.Url;
+            }
+            else
+            {
+                errorMessage = result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error uploading image: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingImage = false;
+        }
+    }
+
+    private async Task HandleAudioUpload(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        isUploadingAudio = true;
+
+        try
+        {
+            var file = e.File;
+            if (file.Size > 5 * 1024 * 1024) // 5MB
+            {
+                errorMessage = "Audio file size must be less than 5MB";
+                return;
+            }
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var result = await QuizManagementService.UploadQuestionAudioAsync(stream, file.Name);
+
+            if (result.Success)
+            {
+                questionDto.QuestionAudioUrl = result.Url;
+            }
+            else
+            {
+                errorMessage = result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error uploading audio: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingAudio = false;
+        }
+    }
+
+    private async Task HandleExplanationImageUpload(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+
+        try
+        {
+            var file = e.File;
+            if (file.Size > 1024 * 1024)
+            {
+                errorMessage = "Image file size must be less than 1MB";
+                return;
+            }
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024);
+            var result = await QuizManagementService.UploadQuestionImageAsync(stream, file.Name);
+
+            if (result.Success)
+            {
+                questionDto.ExplanationImageUrl = result.Url;
+            }
+            else
+            {
+                errorMessage = result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error uploading explanation image: {ex.Message}";
+        }
+    }
+
+    private void RemoveImage()
+    {
+        questionDto.QuestionImageUrl = null;
+    }
+
+    private void RemoveAudio()
+    {
+        questionDto.QuestionAudioUrl = null;
+    }
+
+    private void RemoveExplanationImage()
+    {
+        questionDto.ExplanationImageUrl = null;
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = null;
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(questionDto.QuestionText))
+        {
+            errorMessage = "Question text is required";
+            return;
+        }
+
+        if (questionDto.QuestionType != "UserShortAnwswer")
+        {
+            if (!questionDto.AnswerOptions.Any())
+            {
+                errorMessage = "At least one answer option is required";
+                return;
+            }
+
+            if (questionDto.AnswerOptions.Any(o => string.IsNullOrWhiteSpace(o.OptionText)))
+            {
+                errorMessage = "All answer options must have text";
+                return;
+            }
+
+            if (questionDto.QuestionType == "MultipleChoice" && !questionDto.AnswerOptions.Any(o => o.IsCorrect))
+            {
+                errorMessage = "Please mark one option as correct";
+                return;
+            }
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await OnSave.InvokeAsync(questionDto);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving question: {ex.Message}";
+            isSaving = false;
+        }
+    }
+}

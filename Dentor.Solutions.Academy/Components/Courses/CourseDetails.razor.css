@@ -1,0 +1,21 @@
+/* Course Details Component Styles */
+
+.card-img-top {
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.course-thumbnail {
+    max-width: 350px;
+    max-height: 250px;
+    object-fit: cover;
+    display: block;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.content-card-ns {
+    overflow: hidden;
+}
+
+

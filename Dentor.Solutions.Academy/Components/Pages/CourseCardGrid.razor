@@ -1,0 +1,167 @@
+@using Dentor.Solutions.Academy.DTOs.Course
+
+@inject NavigationManager Navigation
+
+<FluentGrid Spacing="3" Justify="JustifyContent.FlexStart">
+    @foreach (var course in Courses)
+    {
+        <FluentGridItem xs="12" sm="6" lg="4">
+            <FluentCard Style="height: 100%; display: flex; flex-direction: column; box-shadow: var(--elevation-shadow-card-rest); cursor: pointer;"
+                        @onclick="() => OnCourseView.InvokeAsync(course.Id)">
+                
+                @* Card Header - Image *@
+                <div slot="header" style="padding: 0; margin: 0;">
+                    @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                    {
+                        <img src="@course.ThumbnailUrl" 
+                             alt="@course.Title" 
+                             style="width: 100%; height: 200px; object-fit: cover; display: block;" />
+                    }
+                    else
+                    {
+                        <FluentStack Orientation="Orientation.Vertical" 
+                                    HorizontalAlignment="HorizontalAlignment.Center" 
+                                    VerticalAlignment="VerticalAlignment.Center"
+                                    Style="width: 100%; height: 200px; background: var(--neutral-layer-2);">
+                            <FluentIcon Value="@(new Icons.Regular.Size48.BookOpen())" Color="Color.Custom" CustomColor="#dee2e6" />
+                        </FluentStack>
+                    }
+                </div>
+
+                @* Card Body - Content *@
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Style="flex: 1; padding: 16px;">
+                    
+                    <FluentBadge Appearance="Appearance.Accent" Style="width: fit-content;">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Folder())" Slot="start" />
+                        @(course.Category ?? "General")
+                    </FluentBadge>
+                    
+                    <FluentLabel Typo="Typography.H5" Style="font-weight: 600; margin: 0;">
+                        @course.Title
+                    </FluentLabel>
+                    
+                    @if (!string.IsNullOrWhiteSpace(course.ShortDescription))
+                    {
+                        <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint); margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                            @course.ShortDescription
+                        </FluentLabel>
+                    }
+                    else
+                    {
+                        <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint); font-style: italic; margin: 0;">
+                            No description provided.
+                        </FluentLabel>
+                    }
+                    
+                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true" VerticalGap="8" Style="font-size: 0.875rem; color: var(--neutral-foreground-hint);">
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.DataHistogram())" />
+                            <span>@course.DifficultyLevel</span>
+                        </FluentStack>
+                        @if (course.EstimatedDurationHours > 0)
+                        {
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Clock())" />
+                                <span>@course.EstimatedDurationHours hrs</span>
+                            </FluentStack>
+                        }
+                        @if (course.Price > 0)
+                        {
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Tag())" />
+                                <span>$@course.Price.ToString("F2")</span>
+                            </FluentStack>
+                        }
+                        else
+                        {
+                            <FluentBadge Appearance="Appearance.Accent" BackgroundColor="green" Color="white">
+                                Free
+                            </FluentBadge>
+                        }
+                    </FluentStack>
+                    
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4" Style="font-size: 0.875rem; color: var(--neutral-foreground-hint);">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.People())" />
+                        <span>@course.EnrollmentCount enrolled</span>
+                    </FluentStack>
+                </FluentStack>
+                
+                @* Card Footer - Actions *@
+                <div slot="footer" style="padding: 16px; border-top: 1px solid var(--neutral-stroke-divider-rest);">
+                    @if (IsEnrolled(course.Id))
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" VerticalGap="8">
+                            <FluentBadge Appearance="Appearance.Accent" BackgroundColor="green" Color="white">
+                                <FluentIcon Value="@(new Icons.Regular.Size16.CheckmarkCircle())" />
+                                Enrolled
+                            </FluentBadge>
+                            <FluentButton Appearance="Appearance.Outline" 
+                                        OnClick="() => OnCourseView.InvokeAsync(course.Id)"
+                                        OnClick:stopPropagation="true"
+                                        Style="margin-left: auto;">
+                                Continue
+                                <FluentIcon Value="@(new Icons.Regular.Size16.ArrowRight())" Slot="end" />
+                            </FluentButton>
+                        </FluentStack>
+                    }
+                    else
+                    {
+                        <AuthorizeView>
+                            <Authorized>
+                                <FluentButton Appearance="Appearance.Accent"
+                                            OnClick="() => OnCourseEnroll.InvokeAsync(course.Id)"
+                                            OnClick:stopPropagation="true"
+                                            Disabled="@EnrollingCourseId.HasValue"
+                                            Style="width: 100%;">
+                                    @if (EnrollingCourseId == course.Id)
+                                    {
+                                        <FluentProgressRing Style="width: 16px; height: 16px;" />
+                                    }
+                                    else
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.AddCircle())" Slot="start" />
+                                    }
+                                    Enroll Now
+                                </FluentButton>
+                            </Authorized>
+                            <NotAuthorized>
+                                <FluentButton Appearance="Appearance.Accent"
+                                            OnClick="@(() => Navigation.NavigateTo("/login", false))"
+                                            Style="width: 100%;">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.ArrowEnter())" Slot="start" />
+                                    Login to Enroll
+                                </FluentButton>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    }
+                </div>
+                
+            </FluentCard>
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@code {
+    [Parameter]
+    public List<CourseListDto> Courses { get; set; } = new();
+
+    [Parameter]
+    public HashSet<int> EnrolledCourseIds { get; set; } = new();
+
+    [Parameter]
+    public int? EnrollingCourseId { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnCourseEnroll { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnCourseView { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool IsEnrolled(int courseId)
+    {
+        return EnrolledCourseIds.Contains(courseId);
+    }
+}

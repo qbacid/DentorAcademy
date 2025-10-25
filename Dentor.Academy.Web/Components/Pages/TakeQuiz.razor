@@ -1,16 +1,8 @@
 @page "/quiz/{QuizId:int}"
 @using System.Security.Claims
-@using Dentor.Academy.Web.DTOs
-@using Dentor.Academy.Web.DTOs.Quiz
-@using Dentor.Academy.Web.Interfaces
-@using Dentor.Academy.Web.Models
-@using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.Components.Authorization
-@using Dentor.Academy.Web.Interfaces
 @inject IQuizTakingService QuizService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject UserManager<ApplicationUser> UserManager
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -287,7 +279,7 @@
                                         <i class="bi bi-lightbulb"></i> Explanation
                                     </div>
                                     <div class="explanation-content">
-                                        <p class="mb-2">@CurrentQuestion.Explanation</p>
+                                        <div class="mb-2">@FormatExplanation(CurrentQuestion.Explanation)</div>
                                         @if (!string.IsNullOrEmpty(CurrentQuestion.ExplanationImageUrl))
                                         {
                                             <div class="explanation-image mt-3">
@@ -515,7 +507,8 @@
                                     @if (!string.IsNullOrEmpty(questionResult.Explanation))
                                     {
                                         <div class="alert alert-info mt-3 mb-0">
-                                            <strong>Explanation:</strong> @questionResult.Explanation
+                                            <strong>Explanation:</strong>
+                                            <div class="mt-2">@FormatExplanation(questionResult.Explanation)</div>
                                         </div>
                                     }
                                 </div>
@@ -888,4 +881,19 @@
         return IsOptionSelected(option.AnswerOptionId) ? "active" : "";
     }
 
+    private MarkupString FormatExplanation(string? explanation)
+    {
+        if (string.IsNullOrWhiteSpace(explanation))
+            return new MarkupString(string.Empty);
+
+        // Split by "ENGLISH" and "ESPANOL" (case-insensitive)
+        var result = System.Text.RegularExpressions.Regex.Replace(
+            explanation,
+            @"\b(ENGLISH|ESPANOL)\b",
+            match => $"<hr class=\"my-3\"/><strong>{match.Value}</strong>",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+        );
+
+        return new MarkupString(result);
+    }
 }

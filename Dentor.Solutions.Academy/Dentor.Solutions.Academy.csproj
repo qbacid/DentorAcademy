@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>aspnet-Dentor.Solutions.Academy-f6d74e5e-8201-49d5-8e3a-0275a69e66d2</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.7"/>
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.7"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.7"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9"/>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+        
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.13.0"/>
+        <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.13.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Data\Migrations\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Admin\CategoryManagement.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="Components\Courses\CourseDetails.razor" />
+      <AdditionalFiles Include="Components\Courses\CourseList.razor" />
+    </ItemGroup>
+</Project>

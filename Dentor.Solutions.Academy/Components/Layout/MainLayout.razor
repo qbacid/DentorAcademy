@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentHeader>
+        Dentor Academy
+    </FluentHeader>
+    <FluentStack Class="main" Orientation="Orientation.Horizontal" Width="100%">
+        <NavMenu/>
+        <FluentBodyContent Class="body-content">
+            <div class="content">
+                <div style="position: fixed; top: 60px; right: 10px;">
+                    <FluentMessageBarProvider Section="MESSAGES_TOP" @rendermode="InteractiveServer"/>
+                </div>
+                
+                @Body
+                
+                <FluentDialogProvider @rendermode="InteractiveServer"/>
+                <FluentToastProvider MaxToastCount="10" @rendermode="InteractiveServer"/>
+                <FluentMenuProvider @rendermode="InteractiveServer"/>
+                
+            </div>
+        </FluentBodyContent>
+    </FluentStack>
+    <FluentFooter>
+        <a href="https://www.dentorsolutions.com" target="_blank">Powered by Dentor Solutions</a>
+        <FluentSpacer/>
+        <a href="#" target="_blank">More</a>
+    </FluentFooter>
+</FluentLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

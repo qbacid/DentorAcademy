@@ -1,0 +1,378 @@
+@page "/admin/quizzes"
+@attribute [Authorize(Roles = "Admin,Instructor")]
+
+@inject IQuizManagementService QuizManagementService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@rendermode InteractiveServer
+
+<PageTitle>Quiz Management</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Quiz Management</h2>
+                <button class="btn btn-primary" @onclick="CreateNewQuiz">
+                    <i class="bi bi-plus-circle"></i> Create New Quiz
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading quizzes...</p>
+        </div>
+    }
+    else if (quizzes == null || !quizzes.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No quizzes found. Create your first quiz to get started.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h5 class="mb-0">All Quizzes (@quizzes.Count)</h5>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" placeholder="Search quizzes..." 
+                                       @bind="searchTerm" @bind:event="oninput" @onkeyup="FilterQuizzes" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Category</th>
+                                        <th>Questions</th>
+                                        <th>Passing Score</th>
+                                        <th>Time Limit</th>
+                                        <th>Status</th>
+                                        <th>Updated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var quiz in filteredQuizzes)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@quiz.Title</strong>
+                                                @if (!string.IsNullOrEmpty(quiz.Description))
+                                                {
+                                                    <br />
+                                                    <small class="text-muted">@quiz.Description</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(quiz.Category))
+                                                {
+                                                    <span class="badge bg-secondary">@quiz.Category</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">@quiz.QuestionCount questions</span>
+                                            </td>
+                                            <td>@quiz.PassingScore%</td>
+                                            <td>
+                                                @if (quiz.TimeLimitMinutes.HasValue)
+                                                {
+                                                    <span>@quiz.TimeLimitMinutes min</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No limit</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (quiz.IsActive)
+                                                {
+                                                    <span class="badge bg-success">Active</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Inactive</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small>@quiz.UpdatedAt.ToString("MMM dd, yyyy")</small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button class="btn btn-outline-primary" @onclick="() => EditQuiz(quiz)">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info" @onclick="() => ManageQuestions(quiz)">
+                                                        <i class="bi bi-question-circle"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteQuiz(quiz)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showEditDialog)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(editingQuizId > 0 ? "Edit Quiz" : "Create New Quiz")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseEditDialog"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="editingQuiz" OnValidSubmit="SaveQuiz">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger" />
+
+                            <div class="mb-3">
+                                <label class="form-label">Title <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="editingQuiz!.Title" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <InputTextArea class="form-control" rows="3" @bind-Value="editingQuiz!.Description" />
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Category</label>
+                                    <InputText class="form-control" @bind-Value="editingQuiz!.Category" 
+                                              placeholder="e.g., Anatomy, Radiology" />
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Passing Score (%)</label>
+                                    <InputNumber class="form-control" @bind-Value="editingQuiz!.PassingScore" 
+                                                min="0" max="100" />
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Time Limit (minutes)</label>
+                                    <InputNumber class="form-control" @bind-Value="editingQuiz!.TimeLimitMinutes" 
+                                                placeholder="Leave empty for no limit" />
+                                    <small class="text-muted">Leave empty for no time limit</small>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check mt-4">
+                                        <InputCheckbox class="form-check-input" @bind-Value="editingQuiz!.IsActive" id="isActive" />
+                                        <label class="form-check-label" for="isActive">
+                                            Active (visible to students)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger">@errorMessage</div>
+                            }
+
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseEditDialog">Cancel</button>
+                                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    Save Quiz
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showQuestionsDialog && selectedQuiz != null)
+    {
+        <QuestionManagementDialog 
+            QuizId="selectedQuiz.Id" 
+            QuizTitle="selectedQuiz.Title"
+            OnClose="CloseQuestionsDialog" />
+    }
+</div>
+
+@code {
+    private List<QuizManagementDto> quizzes = new();
+    private List<QuizManagementDto> filteredQuizzes = new();
+    private bool isLoading = true;
+    private bool showEditDialog = false;
+    private bool showQuestionsDialog = false;
+    private bool isSaving = false;
+    private string? errorMessage;
+    private string searchTerm = "";
+    private QuizUpdateDto? editingQuiz;
+    private QuizManagementDto? selectedQuiz;
+    private int editingQuizId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadQuizzes();
+    }
+
+    private async Task LoadQuizzes()
+    {
+        isLoading = true;
+        try
+        {
+            quizzes = await QuizManagementService.GetAllQuizzesAsync();
+            filteredQuizzes = quizzes;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading quizzes: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FilterQuizzes()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredQuizzes = quizzes;
+        }
+        else
+        {
+            var search = searchTerm.ToLower();
+            filteredQuizzes = quizzes.Where(q =>
+                q.Title.ToLower().Contains(search) ||
+                (q.Category?.ToLower().Contains(search) ?? false) ||
+                (q.Description?.ToLower().Contains(search) ?? false)
+            ).ToList();
+        }
+    }
+
+    private void CreateNewQuiz()
+    {
+        editingQuizId = 0;
+        editingQuiz = new QuizUpdateDto
+        {
+            PassingScore = 70.0m,
+            IsActive = true
+        };
+        showEditDialog = true;
+        errorMessage = null;
+    }
+
+    private void EditQuiz(QuizManagementDto quiz)
+    {
+        editingQuizId = quiz.Id;
+        editingQuiz = new QuizUpdateDto
+        {
+            Title = quiz.Title,
+            Description = quiz.Description,
+            Category = quiz.Category,
+            PassingScore = quiz.PassingScore,
+            TimeLimitMinutes = quiz.TimeLimitMinutes,
+            IsActive = quiz.IsActive
+        };
+        showEditDialog = true;
+        errorMessage = null;
+    }
+
+    private async Task SaveQuiz()
+    {
+        if (editingQuiz == null) return;
+
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            if (editingQuizId == 0)
+            {
+                // Create new
+                await QuizManagementService.CreateQuizAsync(editingQuiz);
+            }
+            else
+            {
+                // Update existing
+                await QuizManagementService.UpdateQuizAsync(editingQuizId, editingQuiz);
+            }
+
+            await LoadQuizzes();
+            CloseEditDialog();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving quiz: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void CloseEditDialog()
+    {
+        showEditDialog = false;
+        editingQuiz = null;
+        editingQuizId = 0;
+        errorMessage = null;
+    }
+
+    private void ManageQuestions(QuizManagementDto quiz)
+    {
+        selectedQuiz = quiz;
+        showQuestionsDialog = true;
+    }
+
+    private async Task CloseQuestionsDialog()
+    {
+        showQuestionsDialog = false;
+        selectedQuiz = null;
+        await LoadQuizzes(); // Reload to get updated question counts
+    }
+
+    private async Task DeleteQuiz(QuizManagementDto quiz)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", 
+            $"Are you sure you want to delete '{quiz.Title}'? This will also delete all {quiz.QuestionCount} questions and cannot be undone.");
+
+        if (!confirmed) return;
+
+        try
+        {
+            await QuizManagementService.DeleteQuizAsync(quiz.Id);
+            await LoadQuizzes();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting quiz: {ex.Message}";
+        }
+    }
+}

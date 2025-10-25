@@ -1,0 +1,512 @@
+@page "/admin/categories"
+
+@attribute [Authorize(Roles = "Admin,Instructor")]
+@using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Interfaces
+@using Dentor.Solutions.Academy.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.FluentUI.AspNetCore.Components.Icons.Filled
+
+@inject IDialogService DialogService
+@inject IMessageService MessageService
+@inject ICourseCategoryService CategoryService
+
+@rendermode InteractiveServer
+
+<PageTitle>Manage Categories - DentorAcademy</PageTitle>
+<FluentLabel Typo="Typography.HeroTitle"
+             Style="padding-bottom: 10px; padding-top: 10px;">Manage Course Categories</FluentLabel>
+<FluentDivider Style="margin-bottom: 10px;"/>
+
+<FluentStack Orientation="Orientation.Vertical" Id="category_container"
+             Style="padding: 2rem; margin: 0 auto;width: 100%;">
+    <!-- Header Section -->
+    <FluentStack Orientation="Orientation.Horizontal"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 2rem;width: 100%">
+        <FluentStack Orientation="Orientation.Vertical"
+                     Style="flex: 1;">
+            <FluentLabel Typo="Typography.H3">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Folder())"/>
+                Course Categories
+            </FluentLabel>
+            <FluentLabel Typo="Typography.Body">Organize courses into categories for better navigation</FluentLabel>
+        </FluentStack>
+        <FluentButton Appearance="Appearance.Accent" 
+                      OnClick="OpenDialogCreate"
+                      IconStart="@(new Icons.Regular.Size20.AddCircle())">
+            New Category
+        </FluentButton>
+    </FluentStack>
+
+    <!-- Statistics Cards -->
+    <FluentGrid Spacing="3" Style="margin-bottom: 2rem;width: 100%;" >
+        <FluentGridItem xs="12" sm="6" md="4" lg="2">
+            <CardHeader IconColor="Color.Accent" 
+                        IconHeader="@(new Icons.Regular.Size32.Folder())"
+                        Total="@_categories.Count"
+                        Description="Total Categories" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="4" lg="2">
+            <CardHeader IconColor="Color.Success" Total="@_categories.Count(c => c.IsActive)" 
+                        Description="Active Categories"
+                        IconHeader="@(new Icons.Regular.Size32.CheckmarkCircle())" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="4" lg="2">
+            <CardHeader IconColor="Color.Info" Total="@_categories.Sum(c => c.CourseCount)" 
+                        Description="Total Courses"
+                        IconHeader="@(new Icons.Regular.Size32.BookOpen())" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="4" lg="2">
+            <CardHeader IconColor="Color.Info" Total="@_categories.Sum(c => c.QuizCount)" 
+                        Description="Total Quizzes"
+                        IconHeader="@(new Icons.Regular.Size32.Library())" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="4" lg="2">
+            <CardHeader IconColor="Color.Info" Total="@_categories.Sum(c => c.EnrollmentCount)" 
+                        Description="Total Students Enrolled"
+                        IconHeader="@(new Icons.Regular.Size32.People())" />
+        </FluentGridItem>
+    </FluentGrid>
+
+    <!-- Categories Content -->
+    <FluentCard MinimalStyle="true">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center"
+                     Style="margin-bottom: 1rem;">
+            <FluentLabel Typo="Typography.H5" Style="flex: 1;">
+                <FluentIcon Value="@(new Icons.Regular.Size20.List())"/>
+                All Categories
+            </FluentLabel>
+            <FluentButton IconEnd="@(new Icons.Regular.Size20.Grid())"
+                          Appearance="@(_viewMode == "grid" ? Appearance.Accent : Appearance.Outline)"
+                          OnClick="@(() => _viewMode = "grid")">
+                Grid
+            </FluentButton>
+            <FluentButton IconEnd="@(new Icons.Regular.Size20.List())"
+                          Appearance="@(_viewMode == "list" ? Appearance.Accent : Appearance.Outline)"
+                          OnClick="@(() => _viewMode = "list")">
+                List
+            </FluentButton>
+        </FluentStack>
+
+        @if (_loading)
+        {
+            <FluentStack HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 4rem 2rem;">
+                <FluentProgressRing/>
+                <FluentLabel>Loading...</FluentLabel>
+            </FluentStack>
+        }
+        else if (!_categories.Any())
+        {
+            <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center"
+                         Style="padding: 4rem 2rem;">
+                <FluentIcon Value="@(new Icons.Regular.Size48.OpenFolder())" Color="Color.Neutral"/>
+                <FluentLabel Typo="Typography.H4">No Categories Yet</FluentLabel>
+                <FluentLabel>Create your first category to start organizing courses</FluentLabel>
+                <FluentButton Appearance="Appearance.Accent">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.AddCircle())" Slot="start"/>
+                    Create Category
+                </FluentButton>
+            </FluentStack>
+        }
+        else if (_viewMode == "grid")
+        {
+            <FluentGrid Spacing="4" Style="padding: 1rem 0;">
+                @foreach (var category in _categories)
+                {
+                    <FluentGridItem xs="12" sm="6" md="4" lg="3">
+                        <FluentCard
+                            Style="@($"height: 100%; border-left: 4px solid {(category.Color ?? "#0066CC")}; opacity: {(category.IsActive ? "1" : "0.6")}; transition: all 0.3s ease; cursor: pointer;")">
+                            <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+                                <!-- Header with Icon and Actions -->
+                                <FluentStack Orientation="Orientation.Horizontal"
+                                             VerticalAlignment="VerticalAlignment.Center">
+                                    <div
+                                        style="@($"width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, {(category.Color ?? "#0066CC")}15 0%, {(category.Color ?? "#0066CC")}30 100%); border: 1px solid {(category.Color ?? "#0066CC")}40;")">
+                                        <i class="@(category.IconClass ?? "bi bi-folder")"
+                                           style="@($"font-size: 2rem; color: {(category.Color ?? "#0066CC")};")"></i>
+                                    </div>
+                                    <FluentSpacer/>
+                                    <FluentButton Appearance="Appearance.Lightweight"
+                                                  OnClick="() => OpenDialogEdit(category)"
+                                                  Title="Edit Category">
+                                        <FluentIcon Value="@(new Icons.Regular.Size20.Edit())" Color="Color.Accent"/>
+                                    </FluentButton>
+                                    <FluentButton Appearance="Appearance.Lightweight"
+                                                  OnClick="() => DeleteCategory(category.Id)" 
+                                                  Title="Delete Category">
+                                        <FluentIcon Value="@(new Icons.Regular.Size20.Delete())" Color="Color.Error"/>
+                                    </FluentButton>
+                                </FluentStack>
+
+                                <!-- Category Info -->
+                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                                    <FluentLabel Typo="Typography.H5" Style="margin: 0;">
+                                        @category.Name
+                                    </FluentLabel>
+                                    @if (!string.IsNullOrEmpty(category.Description))
+                                    {
+                                        <FluentLabel Typo="Typography.Body" 
+                                                     Style="color: #666; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                            @category.Description
+                                        </FluentLabel>
+                                    }
+                                    else
+                                    {
+                                        <FluentLabel Typo="Typography.Body" 
+                                                     Style="color: #999; font-style: italic;">
+                                            No description provided
+                                        </FluentLabel>
+                                    }
+                                </FluentStack>
+
+                                <FluentDivider Style="margin: 4px 0;"/>
+
+                                <!-- Footer with Badges and Metadata -->
+                                <FluentStack Orientation="Orientation.Horizontal" 
+                                             VerticalAlignment="VerticalAlignment.Center" 
+                                             Wrap="true">
+                                    <FluentBadge Appearance="Appearance.Accent" 
+                                                 BackgroundColor="@(category.Color ?? "#0066CC")"
+                                                 Style="font-weight: 600;">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Book())" Slot="start"/>
+                                        @category.CourseCount @(category.CourseCount == 1 ? "Course" : "Courses")
+                                    </FluentBadge>
+                                    @if (!category.IsActive)
+                                    {
+                                        <FluentBadge Appearance="Appearance.Neutral">
+                                            <FluentIcon Value="@(new Icons.Regular.Size16.CircleOff())" Slot="start"/>
+                                            Inactive
+                                        </FluentBadge>
+                                    }
+                                    else
+                                    {
+                                        <FluentBadge BackgroundColor="var(--success)">
+                                            <FluentIcon Value="@(new Icons.Regular.Size16.CheckmarkCircle())" Slot="start"/>
+                                            Active
+                                        </FluentBadge>
+                                    }
+                                </FluentStack>
+
+                                <!-- Display Order Badge -->
+                                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                                    <FluentLabel Typo="Typography.Body" 
+                                                 Style="color: #999; font-size: 12px;">
+                                        Display Order: @category.DisplayOrder
+                                    </FluentLabel>
+                                    <FluentSpacer/>
+                                    @if (category.UpdatedAt.HasValue)
+                                    {
+                                        <FluentLabel Typo="Typography.Body" 
+                                                     Style="color: #999; font-size: 12px;"
+                                                     Title="@category.UpdatedAt.Value.ToString("F")">
+                                            Updated @FormatRelativeTime(category.UpdatedAt.Value)
+                                        </FluentLabel>
+                                    }
+                                    else
+                                    {
+                                        <FluentLabel Typo="Typography.Body" 
+                                                     Style="color: #999; font-size: 12px;"
+                                                     Title="@category.CreatedAt.ToString("F")">
+                                            Created @FormatRelativeTime(category.CreatedAt)
+                                        </FluentLabel>
+                                    }
+                                </FluentStack>
+                            </FluentStack>
+                        </FluentCard>
+                    </FluentGridItem>
+                }
+            </FluentGrid>
+        }
+        else
+        {
+            <FluentPaginator State="@_pagination"/>
+            <FluentGrid Spacing="3">
+                <FluentGridItem xs="12">
+                    <FluentDataGrid MultiLine="true"
+                                    Items="@_categories.AsQueryable()"
+                                    Loading="@(_categories == null)"
+                                    TGridItem="CourseCategoryDto"
+                                    Style="width: 100%;"
+                                    ResizableColumns=true
+                                    RowSize="DataGridRowSize.Large">
+                        
+                        <TemplateColumn Title="Status" Align="@Align.Start">
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                                @if (context.IsActive)
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.CheckmarkCircle())" Color="Color.Success" Title="Synced"/>
+                                }
+                                else
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.DismissCircle())" Color="Color.Error" Title="Not Synced"/>
+                                }
+                                <span>@(context.IsActive ? "Active" : "Inactive")</span>
+                            </FluentStack> 
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Actions" Align="@Align.Start">
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                                <FluentButton aria-label="Edit" IconStart="@(new Icons.Regular.Size20.Edit())"
+                                              @onclick="@(() => OpenDialogEdit(context))" Title="Edit"/>
+
+                                <FluentButton aria-label="Delete" IconStart="@(new Icons.Regular.Size20.Delete())"
+                                              @onclick="@(() => DeleteCategory(context.Id))" Title="Delete"/>
+
+                            </FluentStack>
+                        </TemplateColumn>
+
+                        <PropertyColumn Property="arg => arg.Name"
+                                        Sortable="true"
+                                        Title="Category Name" HeaderTooltip="Category Name"/>
+
+                        <PropertyColumn Property="arg => arg.Description"
+                                        Sortable="true" HeaderTooltip="Category Description"
+                                        Title="Description"/>
+
+                        <PropertyColumn Property="arg => arg.DisplayOrder"
+                                        Sortable="true" HeaderTooltip="Category Order"
+                                        Title="Display Order"/>
+
+                        <TemplateColumn Title="Is Active" HeaderTooltip="Is the category active?">
+                            <FluentCheckbox @bind-Value="@context.IsActive"/>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Courses" Sortable="true" Align="Align.Center">
+                            <ColumnOptions>
+                                <div style="display: flex; gap: 4px; align-items: center;">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.Book())"/>
+                                    <span>Courses</span>
+                                </div>
+                            </ColumnOptions>
+                            <ChildContent>
+                                <FluentBadge Appearance="Appearance.Accent">
+                                    @context.CourseCount
+                                </FluentBadge>
+                            </ChildContent>
+                        </TemplateColumn>
+
+                    </FluentDataGrid>
+                </FluentGridItem>
+            </FluentGrid>
+        }
+    </FluentCard>
+</FluentStack>
+
+@code {
+    private List<CourseCategoryDto> _categories = new();
+    private bool _loading = true;
+    private bool _dialogHidden = true;
+    private bool _processing = false;
+    private string? _message;
+    private bool _isError;
+    
+    private string _viewMode = "grid";
+    private CourseCategoryDto? _editingCategory;
+
+    // Pagination for DataGrid
+    private readonly PaginationState _pagination = new() { ItemsPerPage = 10 };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        _loading = true;
+        try
+        {
+            _categories = await CategoryService.GetAllCategoriesAsync(includeInactive: true);
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error loading categories: {ex.Message}";
+            _isError = true;
+            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DeleteCategory(int id)
+    {
+        var cancelled = await ShowConfirmationAsync("Are you sure you want to delete this item?");
+        if (cancelled) { return; }
+        
+        _processing = true;
+        try
+        {
+            var result = await CategoryService.DeleteCategoryAsync(id);
+            if (result.Success)
+            {
+                _message = result.Message;
+                _isError = false;
+                await AddDismissibleMessage(_message, SaveEntityResult.Success);
+                await LoadCategories();
+            }
+            else
+            {
+                _message = string.Join(", ", result.Errors);
+                _isError = true;
+                await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _isError = true;
+            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private async Task OpenDialogCreate()
+    {
+        try
+        {
+            var data = new CreateCourseCategoryDto
+            {
+                IsActive = true,
+                DisplayOrder = _categories.Count + 1
+            };
+        
+            var dialog = await DialogService.ShowDialogAsync<CategoryNewDialog>(data, new DialogParameters
+            {
+                Width = "620px",
+                Title = "Create Category",
+                PrimaryAction = "Save",
+                SecondaryAction = "Cancel",
+                PreventDismissOnOverlayClick = true
+            });
+            var result = await dialog.Result;
+            if (result.Cancelled || result.Data is null) 
+                return;
+            var newItem = (CreateCourseCategoryDto)result.Data;
+            var saveResult = await CategoryService.CreateCategoryAsync(newItem);
+        
+            if (saveResult.Success)
+            {
+                _message = saveResult.Message;
+                _isError = false;
+                await AddDismissibleMessage(_message, SaveEntityResult.Success);
+                await LoadCategories();
+            }
+            else
+            {
+                _message = string.Join(", ", saveResult.Errors);
+                _isError = true;
+                await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            }
+        }
+        catch (Exception e)
+        {
+            _message = e.Message;
+            _isError = true;
+            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+        }
+    }
+
+    private async Task OpenDialogEdit(CourseCategoryDto category)
+    {
+        try
+        {
+            var data = new UpdateCourseCategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name,
+                Description = category.Description,
+                IconClass = category.IconClass,
+                Color = category.Color,
+                DisplayOrder = category.DisplayOrder,
+                IsActive = category.IsActive
+            };
+        
+            var dialog = await DialogService.ShowDialogAsync<CategoryEditDialog>(data, new DialogParameters
+            {
+                Width = "620px",
+                Title = "Edit Category",
+                PrimaryAction = "Update",
+                SecondaryAction = "Cancel",
+                PreventDismissOnOverlayClick = true
+            });
+            var result = await dialog.Result;
+            if (result.Cancelled || result.Data is null) 
+                return;
+            var updatedItem = (UpdateCourseCategoryDto)result.Data;
+            var saveResult = await CategoryService.UpdateCategoryAsync(updatedItem);
+        
+            if (saveResult.Success)
+            {
+                _message = saveResult.Message;
+                _isError = false;
+                await AddDismissibleMessage(_message, SaveEntityResult.Success);
+                await LoadCategories();
+            }
+            else
+            {
+                _message = string.Join(", ", saveResult.Errors);
+                _isError = true;
+                await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            }
+        }
+        catch (Exception e)
+        {
+            _message = e.Message;
+            _isError = true;
+            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+        }
+    }
+    
+    private async Task<bool> ShowConfirmationAsync(string message)
+    {
+        var formattedMessage = $"<strong>{message}</strong>" +
+                        "<br /> This action cannot be undone.";
+        var dialog = await DialogService.ShowConfirmationAsync(formattedMessage);
+        DialogResult result = await dialog.Result;
+        return result.Cancelled;
+    }
+    
+    private async Task AddDismissibleMessage(string resultMessage, SaveEntityResult result)
+    {
+        var message = result != SaveEntityResult.Success
+            ? $"Error:{resultMessage}"
+            : $"Operation completed: {resultMessage}";
+
+        var type = result != SaveEntityResult.Success ? MessageIntent.Error : MessageIntent.Success;
+        await MessageService.ShowMessageBarAsync(options =>
+        {
+            options.Title = message;
+            options.Intent = type;
+            options.Section = nameof(MessageSessions.MESSAGES_TOP);
+            options.AllowDismiss = true;
+            options.ClearAfterNavigation = true;
+            options.Timeout = 3 * 1000;
+        });
+    }
+    
+    private string FormatRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.Now - dateTime;
+        
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+        if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+        
+        return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+}

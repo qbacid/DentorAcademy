@@ -1,0 +1,493 @@
+@page "/course/{CourseId:int}"
+
+@using System.Security.Claims
+@using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Interfaces
+@using Dentor.Solutions.Academy.Models
+
+@inject ICourseManagementService CourseService
+@inject ICourseContentService ContentService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+
+@rendermode InteractiveServer
+
+<PageTitle>@(_course?.Title ?? "Course Details")</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner Message="Loading course details..."/>
+}
+else if (_course != null)
+{
+    <FluentLabel Typo="Typography.HeroTitle"
+                 Style="padding-bottom: 10px; padding-top: 10px;">@_course.Title</FluentLabel>
+    <FluentDivider Style="margin-bottom: 10px;"/>
+    
+    <!-- Main Content Area -->
+    <FluentGrid AdaptiveRendering="true" Spacing="2" Justify="JustifyContent.FlexStart">
+        <FluentGridItem xs="12" md="9">
+            <FluentCard Width="100%" MinimalStyle="true" Class="content-card-ns">
+                <FluentStack Orientation="Orientation.Vertical"  >
+                    
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Style="flex: 1; padding: 16px;">
+
+                        <FluentLabel Typo="Typography.Body" Style="font-weight: 600; font-size: 1.1rem;">
+                            @_course.Title
+                        </FluentLabel>
+
+                        @if (!string.IsNullOrWhiteSpace(_course.ShortDescription))
+                        {
+                            <FluentLabel Typo="Typography.Body"
+                                         Style="color: #6c757d; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                @_course.ShortDescription
+                            </FluentLabel>
+                        }
+
+                        <FluentStack Orientation="Orientation.Horizontal" Wrap="true" VerticalGap="8"
+                                     Style="font-size: 0.875rem; color: #6c757d;">
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                <FluentIcon Value="@(new Icons.Regular.Size16.DataHistogram())"/>
+                                <span>@_course.DifficultyLevel</span>
+                            </FluentStack>
+
+                            @if (_course.EstimatedDurationHours > 0)
+                            {
+                                <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.Clock())"/>
+                                    <span>@_course.EstimatedDurationHours hrs</span>
+                                </FluentStack>
+                            }
+
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                <FluentIcon Value="@(new Icons.Regular.Size16.People())"/>
+                                <span>@_course.EnrollmentCount enrolled</span>
+                            </FluentStack>
+
+                        </FluentStack>
+
+                        @if (_course.Price > 0)
+                        {
+                            <FluentLabel Typo="Typography.Body" Style="font-weight: 600; color: #0078d4;">
+                                $@_course.Price.ToString("F2")
+                            </FluentLabel>
+                        }
+                        else
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral"
+                                         Style="font-weight: bold; padding: 2px;"
+                                         Rounded="true"
+                                         Fill="highlight"
+                                         BackgroundColor="green"
+                                         Color="white">
+                                Free
+                            </FluentBadge>
+                        }
+                    </FluentStack>
+                    
+                    <FluentDivider Style="width: 100%;"/>
+
+                    <AuthorizeView>
+                        <Authorized>
+                            @if (_isEnrolled)
+                            {
+                                <FluentProgress Min="0" Max="100" Value="@(_progressPercentage)"
+                                                Width="100%"
+                                                Stroke="ProgressStroke.Large"
+                                                Color="Color.Success"/>
+                                
+                                <FluentAnchor Href="@($"/course/{CourseId}/learn")" 
+                                              IconStart="@(new Icons.Regular.Size20.PlayCircle())">
+                                   Continue
+                                </FluentAnchor>
+                            }
+                            else
+                            {
+                                <FluentButton Title="Enroll in Course"
+                                              Appearance="Appearance.Accent"
+                                              IconStart="@(new Icons.Regular.Size20.AddCircle())"
+                                              Disabled="@_enrolling"
+                                              OnClick="EnrollInCourse"
+                                              Width="100%">
+                                    @if (_enrolling)
+                                    {
+                                        <FluentProgressRing Style="width: 16px; height: 16px;"/>
+                                        <span>Enrolling...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Enroll Now</span>
+                                    }
+                                </FluentButton>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <FluentAnchor Href="@($"/login?returnUrl=/course/{CourseId}")"
+                                          Appearance="Appearance.Accent"
+                                          Style="border-radius: 12px;"
+                                          IconEnd="@(new Icons.Regular.Size20.ArrowRight())">
+                                Sign in to Enroll
+                            </FluentAnchor>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" md="3">
+            <FluentCard Width="100%" MinimalStyle="true" Class="content-card-ns">
+                @(RenderCourseCard())
+            </FluentCard>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentCard Width="100%" MinimalStyle="true" Class="content-card-ns">
+                <FluentTabs @bind-ActiveTabId="@_activeTabId"
+                            OnTabChange="HandleOnTabChange"
+                            Size="@_tabSize">
+                    
+                    <FluentTab Label="Overview" 
+                               Icon="@(new Icons.Regular.Size24.ContentView())" 
+                               Id="tab-1">
+                        <FluentStack Orientation="Orientation.Vertical" 
+                                     VerticalGap="8">
+                            @if (!string.IsNullOrEmpty(_course.FullDescription))
+                            {
+                                <FluentLabel Typo="Typography.H4">Overview</FluentLabel>
+                                <FluentLabel Typo="Typography.Body">
+                                    @_course.FullDescription
+                                </FluentLabel>
+                            }
+                        </FluentStack>
+                        <FluentDivider Style="margin-bottom: 15px;margin-top: 5px;"/>
+
+                        <FluentStack Icon="@(new Icons.Regular.Size24.BookOpen())" 
+                                     Orientation="Orientation.Vertical" 
+                                     VerticalGap="8">
+                            @if (_course.LearningObjectives?.Any() == true)
+                            {
+                                <FluentLabel Typo="Typography.H4">What You'll Learn</FluentLabel>
+                                @foreach (var objective in _course.LearningObjectives)
+                                {
+                                    <FluentLabel Typo="Typography.Body">@objective</FluentLabel>
+                                }
+                            }
+                        </FluentStack>
+                        <FluentDivider Style="margin-bottom: 15px;margin-top: 5px;"/>
+
+                        <FluentStack Orientation="Orientation.Vertical" 
+                                     Icon="@(new Icons.Regular.Size24.Checkmark())" 
+                                     VerticalGap="8">
+                            @if (_course.Prerequisites?.Any() == true)
+                            {
+                                <FluentLabel Typo="Typography.H4">Prerequisites</FluentLabel>
+                                @foreach (var prerequisite in _course.Prerequisites)
+                                {
+                                    <FluentLabel Typo="Typography.Body">@prerequisite</FluentLabel>
+                                }
+                            }
+                        </FluentStack>
+                        <FluentDivider Style="margin-bottom: 15px;margin-top: 5px;"/>
+
+                        @if (_course.Tags?.Any() == true)
+                        {
+                            <FluentOverflow Style="width: 100%;">
+                                @foreach (var tag in _course.Tags)
+                                {
+                                    <FluentOverflowItem>
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Tag())"/>
+                                        @tag
+                                    </FluentOverflowItem>
+                                }
+                            </FluentOverflow>
+                        }
+                    </FluentTab>
+                    <FluentTab Label="Curriculum" Id="tab-2" DeferredLoading="@_deferredLoading">
+                        <LoadingContent>
+                            <FluentProgressRing/>
+                        </LoadingContent>
+                        <Content>
+
+                        </Content>
+                    </FluentTab>
+                    
+                    <FluentTab Label="Forum" Id="tab-3" DeferredLoading="@_deferredLoading">
+                        <LoadingContent>
+                            <FluentProgressRing/>
+                        </LoadingContent>
+                        <Content>
+
+                        </Content>
+                    </FluentTab>
+                </FluentTabs>
+            </FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+}
+else
+{
+    <FluentStack Orientation="Orientation.Vertical"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 VerticalAlignment="VerticalAlignment.Center">
+        <FluentIcon Value="@(new Icons.Regular.Size48.ErrorCircle())" Color="Color.Neutral"/>
+        <FluentLabel Typo="Typography.H4" Weight="FontWeight.Bold">Course Not Found</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Color="Color.Error">
+            The course you're looking for doesn't exist or has been removed.
+        </FluentLabel>
+        <FluentButton Appearance="Appearance.Accent"
+                      IconStart="@(new Icons.Regular.Size20.BookOpen())"
+                      @onclick='() => Navigation.NavigateTo("/courses")'>
+            Browse All Courses
+        </FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+
+    private CourseDto? _course;
+    private CourseStructureDto? _courseStructure;
+    private bool _loading = true;
+    private bool _isEnrolled;
+    private bool _enrolling;
+    private int _progressPercentage;
+    private string _activeTab = "overview";
+    private HashSet<int> _expandedModules = new();
+    private string? _userId;
+    
+    bool _deferredLoading = false;
+    TabSize _tabSize = TabSize.Large;
+    string? _activeTabId = "tab-1";
+    FluentTab? _changedToTab;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadCourseData();
+    }
+
+    private async Task LoadCourseData()
+    {
+        _loading = true;
+        try
+        {
+            _course = await CourseService.GetCourseByIdAsync(CourseId);
+            if (_course == null)
+            {
+                _loading = false;
+                return;
+            }
+
+            _courseStructure = await ContentService.GetCourseStructureAsync(CourseId, _userId);
+
+            // Expand the first module by default
+            if (_courseStructure.Modules.Any())
+            {
+                _expandedModules.Add(_courseStructure.Modules.First().Id);
+            }
+
+            // Check if the user is enrolled
+            if (!string.IsNullOrEmpty(_userId))
+            {
+                var enrolledCourseIds = await CourseService.GetUserEnrolledCourseIdsAsync(_userId);
+                _isEnrolled = enrolledCourseIds.Contains(CourseId);
+
+                // TODO: Get actual progress
+                _progressPercentage = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error loading course: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task EnrollInCourse()
+    {
+        if (string.IsNullOrEmpty(_userId))
+            return;
+
+        _enrolling = true;
+        try
+        {
+            var result = await CourseService.EnrollUserAsync(CourseId, _userId);
+            if (result.Success)
+            {
+                ToastService.ShowSuccess("Successfully enrolled in the course!");
+                _isEnrolled = true;
+
+                await Task.Delay(1500);
+                Navigation.NavigateTo($"/course/{CourseId}/learn");
+            }
+            else
+            {
+                ToastService.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error enrolling in course: {ex.Message}");
+        }
+        finally
+        {
+            _enrolling = false;
+        }
+    }
+
+    private void ToggleModule(int moduleId)
+    {
+        if (_expandedModules.Contains(moduleId))
+            _expandedModules.Remove(moduleId);
+        else
+            _expandedModules.Add(moduleId);
+    }
+
+    private Icon GetContentIconValue(string contentType)
+    {
+        return contentType switch
+        {
+            "Video" => new Icons.Regular.Size20.PlayCircle(),
+            "Document" => new Icons.Regular.Size20.DocumentText(),
+            "PDF" => new Icons.Regular.Size20.DocumentPdf(),
+            "Audio" => new Icons.Regular.Size20.MusicNote2(),
+            "Quiz" => new Icons.Regular.Size20.QuestionCircle(),
+            "ExternalLink" => new Icons.Regular.Size20.Link(),
+            _ => new Icons.Regular.Size20.Document()
+        };
+    }
+
+    private string FormatDuration(int minutes)
+    {
+        if (minutes < 60)
+            return $"{minutes}m";
+
+        var hours = minutes / 60;
+        var mins = minutes % 60;
+        return mins > 0 ? $"{hours}h {mins}m" : $"{hours}h";
+    }
+
+    private void ShareOnTwitter()
+    {
+        var url = $"https://twitter.com/intent/tweet?text=Check out this course: {_course?.Title}&url={Navigation.Uri}";
+        Navigation.NavigateTo(url, true);
+    }
+
+    private void ShareOnFacebook()
+    {
+        var url = $"https://www.facebook.com/sharer/sharer.php?u={Navigation.Uri}";
+        Navigation.NavigateTo(url, true);
+    }
+
+    private void ShareOnLinkedIn()
+    {
+        var url = $"https://www.linkedin.com/sharing/share-offsite/?url={Navigation.Uri}";
+        Navigation.NavigateTo(url, true);
+    }
+
+    private string GetContentIcon(string contentType)
+    {
+        var definedContentTpe = Enum.TryParse(contentType, out InternalContentType parsedContentType);
+        if (definedContentTpe)
+        {
+            return parsedContentType switch
+            {
+                InternalContentType.Video => "bi-play-circle-fill",
+                InternalContentType.Document => "bi-file-earmark-text-fill",
+                InternalContentType.PDF => "bi-file-earmark-pdf-fill",
+                InternalContentType.Audio => "bi-music-note-beamed",
+                InternalContentType.Quiz => "bi-question-circle-fill",
+                InternalContentType.ExternalLink => "bi-link-45deg",
+                _ => "bi-file-earmark"
+            };
+        }
+
+        return "bi-file-earmark";
+    }
+
+    private RenderFragment RenderCourseCard() => __builder =>
+    {
+        <FluentStack Orientation="Orientation.Vertical">
+
+                <FluentStack Orientation="Orientation.Vertical">
+                    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">This course includes:</FluentLabel>
+
+                    @if (_courseStructure != null)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.PlayCircle())" Color="Color.Accent"/>
+                            <FluentLabel Typo="Typography.Body">@_courseStructure.TotalLectures lectures</FluentLabel>
+                        </FluentStack>
+
+                        <FluentStack Orientation="Orientation.Horizontal">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Clock())" Color="Color.Accent"/>
+                            <FluentLabel
+                                Typo="Typography.Body">@FormatDuration(_courseStructure.TotalDurationMinutes) of content
+                            </FluentLabel>
+                        </FluentStack>
+                    }
+
+                    <FluentStack Orientation="Orientation.Horizontal">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Laptop())" Color="Color.Accent"/>
+                        <FluentLabel Typo="Typography.Body">Access on desktop and mobile</FluentLabel>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Horizontal">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.AccessTime())" Color="Color.Accent"/>
+                        <FluentLabel Typo="Typography.Body">Full lifetime access</FluentLabel>
+                    </FluentStack>
+                </FluentStack>
+
+                @if (_course?.Price > 0)
+                {
+                    <FluentLabel Typo="Typography.H4" Weight="FontWeight.Bold" Color="Color.Accent">
+                        $@_course.Price.ToString("F2")
+                    </FluentLabel>
+                }
+                else
+                {
+                    <FluentBadge Appearance="Appearance.Neutral"
+                                 Style="font-weight: bold; padding: 5px;"
+                                 Rounded="true"
+                                 Fill="highlight"
+                                 BackgroundColor="green"
+                                 Color="white">
+                        Free
+                    </FluentBadge>
+                }
+                
+                <FluentDivider Orientation="Orientation.Horizontal" Style="width: 100%;"/>
+                
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center">
+                    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Share this course:</FluentLabel>
+                </FluentStack>
+                
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center" VerticalGap="8">
+                    <FluentButton Appearance="Appearance.Outline"
+                                  IconStart="@(new Icons.Regular.Size20.Share())"
+                                  Title="Share on Twitter"
+                                  OnClick="ShareOnTwitter">
+                        Twitter
+                    </FluentButton>
+                    
+                    <FluentButton Appearance="Appearance.Outline"
+                                  IconStart="@(new Icons.Regular.Size20.Share())"
+                                  Title="Share on LinkedIn"
+                                  OnClick="ShareOnLinkedIn">
+                        LinkedIn
+                    </FluentButton>
+                </FluentStack>
+            </FluentStack>
+    };
+
+    private void HandleOnTabChange(FluentTab tab)
+    {
+        _changedToTab = tab;
+    }
+}

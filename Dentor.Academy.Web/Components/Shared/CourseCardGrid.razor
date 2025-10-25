@@ -1,0 +1,126 @@
+@using Dentor.Academy.Web.DTOs.Course
+@inject NavigationManager Navigation
+
+<div class="row g-4">
+    @foreach (var course in Courses)
+    {
+        <div class="col-sm-6 col-lg-4">
+            <div class="card course-card border-0 shadow-sm h-100" @onclick="() => OnCourseView.InvokeAsync(course.Id)">
+                @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                {
+                    <img src="@course.ThumbnailUrl" alt="@course.Title" class="card-img-top course-thumbnail" />
+                }
+                else
+                {
+                    <div class="card-img-top course-thumbnail-placeholder">
+                        <i class="bi bi-book-half"></i>
+                    </div>
+                }
+                
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-2">
+                        <span class="badge bg-primary-subtle text-primary">
+                            <i class="bi bi-folder me-1"></i>@(course.Category ?? "General")
+                        </span>
+                    </div>
+                    
+                    <h5 class="card-title course-title mb-2">@course.Title</h5>
+                    
+                    @if (!string.IsNullOrWhiteSpace(course.ShortDescription))
+                    {
+                        <p class="card-text course-description text-muted mb-3">@course.ShortDescription</p>
+                    }
+                    else
+                    {
+                        <p class="card-text course-description text-muted fst-italic mb-3">No description provided.</p>
+                    }
+                    
+                    <div class="course-meta text-muted small mb-2">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span><i class="bi bi-signal me-1"></i> @course.DifficultyLevel</span>
+                            @if (course.EstimatedDurationHours > 0)
+                            {
+                                <span><i class="bi bi-clock me-1"></i> @course.EstimatedDurationHours hrs</span>
+                            }
+                            @if (course.Price > 0)
+                            {
+                                <span><i class="bi bi-tag me-1"></i> $@course.Price.ToString("F2")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Free</span>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="small text-muted mb-3">
+                        <i class="bi bi-people-fill me-1"></i> @course.EnrollmentCount enrolled
+                    </div>
+                    
+                    <div class="mt-auto">
+                        @if (IsEnrolled(course.Id))
+                        {
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle-fill"></i> Enrolled
+                                </span>
+                                <button class="btn btn-sm btn-outline-primary ms-auto" 
+                                        @onclick="() => OnCourseView.InvokeAsync(course.Id)"
+                                        @onclick:stopPropagation="true">
+                                    Continue <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <AuthorizeView>
+                                <Authorized>
+                                    <button class="btn btn-primary w-100"
+                                            @onclick="() => OnCourseEnroll.InvokeAsync(course.Id)"
+                                            @onclick:stopPropagation="true"
+                                            disabled="@EnrollingCourseId.HasValue">
+                                        @if (EnrollingCourseId == course.Id)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        <i class="bi bi-plus-circle"></i> Enroll Now
+                                    </button>
+                                </Authorized>
+                                <NotAuthorized>
+                                    <a href="/login" class="btn btn-primary w-100" @onclick:stopPropagation="true">
+                                        <i class="bi bi-box-arrow-in-right"></i> Login to Enroll
+                                    </a>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<CourseListDto> Courses { get; set; } = new();
+
+    [Parameter]
+    public HashSet<int> EnrolledCourseIds { get; set; } = new();
+
+    [Parameter]
+    public int? EnrollingCourseId { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnCourseEnroll { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnCourseView { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool IsEnrolled(int courseId)
+    {
+        return EnrolledCourseIds.Contains(courseId);
+    }
+}

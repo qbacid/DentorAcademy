@@ -3,6 +3,7 @@ using Dentor.Academy.Web.Data;
 using Dentor.Academy.Web.Interfaces;
 using Dentor.Academy.Web.Models;
 using Dentor.Academy.Web.Services;
+using Dentor.Academy.Web.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -74,14 +75,27 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
 // Add response caching for better performance
 builder.Services.AddResponseCaching();
 
+// Add memory cache for Vimeo service
+builder.Services.AddMemoryCache();
+
+// Configure Integration Settings
+builder.Services.Configure<VimeoSettings>(builder.Configuration.GetSection("Vimeo"));
+builder.Services.Configure<AzureStorageSettings>(builder.Configuration.GetSection("AzureStorage"));
+
 // Register Services with Dependency Injection (using interfaces)
 builder.Services.AddScoped<IQuizScoringService, QuizScoringService>();
 builder.Services.AddScoped<IQuizImportService, QuizImportService>();
 builder.Services.AddScoped<IQuizTakingService, QuizTakingService>();
+builder.Services.AddScoped<IQuizManagementService, QuizManagementService>();
 builder.Services.AddScoped<IUserPerformanceService, UserPerformanceService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<ICourseCategoryService, CourseCategoryService>();
 builder.Services.AddScoped<ICourseManagementService, CourseManagementService>();
+builder.Services.AddScoped<ICourseContentService, CourseContentService>();
+
+// Register Integration Services
+builder.Services.AddHttpClient<IVimeoService, VimeoService>();
+builder.Services.AddScoped<IAzureBlobStorageService, AzureBlobStorageService>();
 
 // Add Controllers for API endpoints (image serving)
 builder.Services.AddControllers();

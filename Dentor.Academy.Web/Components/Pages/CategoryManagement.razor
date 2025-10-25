@@ -1,0 +1,701 @@
+@page "/admin/categories"
+
+@attribute [Authorize(Roles = "Admin,Instructor")]
+
+@using Dentor.Academy.Web.DTOs.Course
+@using Dentor.Academy.Web.Interfaces
+@using System.ComponentModel.DataAnnotations
+
+@inject ICourseCategoryService CategoryService
+@inject IJSRuntime JS
+
+@rendermode InteractiveServer
+
+<PageTitle>Manage Categories - DentorAcademy</PageTitle>
+
+<div class="category-management-container">
+    <!-- Header Section -->
+    <div class="page-header">
+        <div class="header-content">
+            <div>
+                <h2><i class="bi bi-folder-fill"></i> Course Categories</h2>
+                <p class="text-muted">Organize courses into categories for better navigation</p>
+            </div>
+            <button class="btn btn-primary" @onclick="OpenCreateModal">
+                <i class="bi bi-plus-circle"></i> New Category
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="bi bi-folder"></i>
+            </div>
+            <div class="stat-content">
+                <h3>@_categories.Count</h3>
+                <p>Total Categories</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>@_categories.Count(c => c.IsActive)</h3>
+                <p>Active</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="bi bi-book"></i>
+            </div>
+            <div class="stat-content">
+                <h3>@_categories.Sum(c => c.CourseCount)</h3>
+                <p>Total Courses</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert @(_isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+            <i class="bi @(_isError ? "bi-exclamation-triangle" : "bi-check-circle")"></i>
+            @_message
+            <button type="button" class="btn-close" @onclick="() => _message = string.Empty"></button>
+        </div>
+    }
+
+    <!-- Categories Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Categories</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary @(_viewMode == "grid" ? "active" : "")" 
+                            @onclick="@(() => _viewMode = "grid")">
+                        <i class="bi bi-grid-3x3"></i> Grid
+                    </button>
+                    <button class="btn btn-outline-secondary @(_viewMode == "list" ? "active" : "")" 
+                            @onclick="@(() => _viewMode = "list")">
+                        <i class="bi bi-list-ul"></i> List
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (!_categories.Any())
+            {
+                <div class="empty-state">
+                    <i class="bi bi-folder-x"></i>
+                    <h4>No Categories Yet</h4>
+                    <p>Create your first category to start organizing courses</p>
+                    <button class="btn btn-primary" @onclick="OpenCreateModal">
+                        <i class="bi bi-plus-circle"></i> Create Category
+                    </button>
+                </div>
+            }
+            else if (_viewMode == "grid")
+            {
+                <div class="category-grid">
+                    @foreach (var category in _categories)
+                    {
+                        <div class="category-card @(!category.IsActive ? "inactive" : "")" 
+                             style="border-left: 4px solid @(category.Color ?? "#0066CC")">
+                            <div class="category-header">
+                                <div class="category-icon" style="background-color: @(category.Color ?? "#0066CC")20">
+                                    <i class="@(category.IconClass ?? "bi bi-folder") fs-3" 
+                                       style="color: @(category.Color ?? "#0066CC")"></i>
+                                </div>
+                                <div class="category-actions">
+                                    <button class="btn btn-sm btn-ghost" @onclick="() => OpenEditModal(category)" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-ghost" @onclick="() => DeleteCategory(category.Id)" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="category-body">
+                                <h5>@category.Name</h5>
+                                @if (!string.IsNullOrEmpty(category.Description))
+                                {
+                                    <p class="text-muted small">@category.Description</p>
+                                }
+                                <div class="category-meta">
+                                    <span class="badge bg-primary">@category.CourseCount Courses</span>
+                                    @if (!category.IsActive)
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th width="50"><i class="bi bi-grip-vertical"></i></th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th width="120" class="text-center">Courses</th>
+                                <th width="100" class="text-center">Status</th>
+                                <th width="150" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var category in _categories)
+                            {
+                                <tr class="@(!category.IsActive ? "table-secondary" : "")">
+                                    <td class="drag-handle">
+                                        <i class="bi bi-grip-vertical text-muted"></i>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="category-icon-sm" style="background-color: @(category.Color ?? "#0066CC")20">
+                                                <i class="@(category.IconClass ?? "bi bi-folder")" 
+                                                   style="color: @(category.Color ?? "#0066CC")"></i>
+                                            </div>
+                                            <strong>@category.Name</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">@(category.Description ?? "—")</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">@category.CourseCount</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (category.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" @onclick="() => OpenEditModal(category)" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" @onclick="() => DeleteCategory(category.Id)" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" @onclick="HandleBackdropClick">
+        <div class="modal-dialog modal-lg" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi @(_editingCategory == null ? "bi-plus-circle" : "bi-pencil")"></i>
+                        @(_editingCategory == null ? "Create New Category" : "Edit Category")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_categoryForm" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Category Name *</label>
+                                    <InputText @bind-Value="_categoryForm.Name" class="form-control" placeholder="e.g., Dental Surgery" />
+                                    <ValidationMessage For="() => _categoryForm.Name" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Display Order</label>
+                                    <InputNumber @bind-Value="_categoryForm.DisplayOrder" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputTextArea @bind-Value="_categoryForm.Description" class="form-control" rows="3" 
+                                         placeholder="Brief description of this category..." />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Icon Class</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="@(_categoryForm.IconClass ?? "bi bi-folder")"></i>
+                                        </span>
+                                        <InputText @bind-Value="_categoryForm.IconClass" class="form-control" 
+                                                 placeholder="bi bi-folder" />
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Use Bootstrap Icons class. <a href="https://icons.getbootstrap.com/" target="_blank">Browse icons</a>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Color</label>
+                                    <div class="input-group">
+                                        <input type="color" @bind="_categoryForm.Color" class="form-control form-control-color" />
+                                        <InputText @bind-Value="_categoryForm.Color" class="form-control" placeholder="#0066CC" />
+                                    </div>
+                                    <small class="form-text text-muted">Choose a brand color for this category</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <InputCheckbox @bind-Value="_categoryForm.IsActive" class="form-check-input" id="isActive" />
+                                <label class="form-check-label" for="isActive">
+                                    Active (visible to users)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Preview -->
+                        <div class="alert alert-light border">
+                            <strong><i class="bi bi-eye"></i> Preview:</strong>
+                            <div class="mt-2 p-3 border rounded" style="border-left: 4px solid @(_categoryForm.Color ?? "#0066CC") !important;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="category-icon-sm" style="background-color: @(_categoryForm.Color ?? "#0066CC")20">
+                                        <i class="@(_categoryForm.IconClass ?? "bi bi-folder")" 
+                                           style="color: @(_categoryForm.Color ?? "#0066CC")"></i>
+                                    </div>
+                                    <div>
+                                        <strong>@(_categoryForm.Name ?? "Category Name")</strong>
+                                        <p class="text-muted mb-0 small">@(_categoryForm.Description ?? "Description will appear here...")</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_processing">
+                                @if (_processing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="bi @(_editingCategory == null ? "bi-plus-circle" : "bi-save")"></i>
+                                @(_editingCategory == null ? "Create Category" : "Save Changes")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .category-management-container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .page-header h2 {
+        margin-bottom: 0.25rem;
+        color: #2c3e50;
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .stat-content h3 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .stat-content p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+
+    .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .category-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+    }
+
+    .category-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    .category-card.inactive {
+        opacity: 0.6;
+    }
+
+    .category-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .category-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .category-icon-sm {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .category-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        border: none;
+        padding: 0.25rem 0.5rem;
+        color: #6c757d;
+        transition: all 0.2s;
+    }
+
+    .btn-ghost:hover {
+        background: #f8f9fa;
+        color: #0066CC;
+    }
+
+    .category-body h5 {
+        margin-bottom: 0.5rem;
+        color: #2c3e50;
+    }
+
+    .category-meta {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h4 {
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+
+    .drag-handle {
+        cursor: move;
+    }
+
+    .drag-handle:hover {
+        color: #0066CC !important;
+    }
+
+    @@media (max-width: 768px) {
+        .category-management-container {
+            padding: 1rem;
+        }
+
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .category-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private List<CourseCategoryDto> _categories = new();
+    private bool _loading = true;
+    private bool _showModal = false;
+    private bool _processing = false;
+    private string? _message;
+    private bool _isError;
+    private string _viewMode = "grid";
+    private CourseCategoryDto? _editingCategory;
+    private CategoryFormModel _categoryForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        _loading = true;
+        try
+        {
+            _categories = await CategoryService.GetAllCategoriesAsync(includeInactive: true);
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error loading categories: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        _editingCategory = null;
+        _categoryForm = new CategoryFormModel
+        {
+            DisplayOrder = _categories.Count,
+            IconClass = "bi bi-folder",
+            Color = "#0066CC",
+            IsActive = true
+        };
+        _showModal = true;
+        _message = string.Empty;
+    }
+
+    private void OpenEditModal(CourseCategoryDto category)
+    {
+        _editingCategory = category;
+        _categoryForm = new CategoryFormModel
+        {
+            Name = category.Name,
+            Description = category.Description,
+            IconClass = category.IconClass,
+            Color = category.Color,
+            DisplayOrder = category.DisplayOrder,
+            IsActive = category.IsActive
+        };
+        _showModal = true;
+        _message = string.Empty;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+        _editingCategory = null;
+        _categoryForm = new();
+        _processing = false;
+    }
+
+    private void HandleBackdropClick()
+    {
+        if (!_processing)
+        {
+            CloseModal();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_processing) return;
+
+        _processing = true;
+        try
+        {
+            CategoryOperationResult result;
+
+            if (_editingCategory == null)
+            {
+                var dto = new CreateCourseCategoryDto
+                {
+                    Name = _categoryForm.Name,
+                    Description = _categoryForm.Description,
+                    IconClass = _categoryForm.IconClass,
+                    Color = _categoryForm.Color,
+                    DisplayOrder = _categoryForm.DisplayOrder,
+                    IsActive = _categoryForm.IsActive
+                };
+                result = await CategoryService.CreateCategoryAsync(dto);
+            }
+            else
+            {
+                var dto = new UpdateCourseCategoryDto
+                {
+                    Id = _editingCategory.Id,
+                    Name = _categoryForm.Name,
+                    Description = _categoryForm.Description,
+                    IconClass = _categoryForm.IconClass,
+                    Color = _categoryForm.Color,
+                    DisplayOrder = _categoryForm.DisplayOrder,
+                    IsActive = _categoryForm.IsActive
+                };
+                result = await CategoryService.UpdateCategoryAsync(dto);
+            }
+
+            if (result.Success)
+            {
+                _message = result.Message;
+                _isError = false;
+                CloseModal();
+                await LoadCategories();
+            }
+            else
+            {
+                _message = string.Join(", ", result.Errors);
+                _isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private async Task DeleteCategory(int id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this category? This action cannot be undone.");
+        if (!confirmed) return;
+
+        _processing = true;
+        try
+        {
+            var result = await CategoryService.DeleteCategoryAsync(id);
+
+            if (result.Success)
+            {
+                _message = result.Message;
+                _isError = false;
+                await LoadCategories();
+            }
+            else
+            {
+                _message = string.Join(", ", result.Errors);
+                _isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private class CategoryFormModel
+    {
+        [Required(ErrorMessage = "Category name is required")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 100 characters")]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
+        public string? Description { get; set; }
+
+        public string? IconClass { get; set; } = "bi bi-folder";
+        public string? Color { get; set; } = "#0066CC";
+        public int DisplayOrder { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

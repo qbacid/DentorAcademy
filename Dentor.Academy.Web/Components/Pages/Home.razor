@@ -1,6 +1,5 @@
 ﻿@page "/"
 
-@using Dentor.Academy.Web.DTOs.Quiz
 @using Dentor.Academy.Web.DTOs.Course
 @using Dentor.Academy.Web.Interfaces
 @using Microsoft.AspNetCore.Identity
@@ -16,145 +15,132 @@
 
 <PageTitle>Luxadent Pro Academy - Home</PageTitle>
 
-<div class="py-3 mb-2">
-    <div class="container">
-        <div class="row justify-content-center text-center">
-            <div class="col-lg-8">
-                <h4 class="display-4 fw-bold mb-3">Welcome to Luxadent Pro Training Center</h4>
-                <p class="lead text-muted mb-2">
-                    Explore our courses and enhance your learning journey. Browse available courses and enroll to get started!
-                </p>
-            </div>
+<!-- LinkedIn-Style Hero Section -->
+<div class="linkedin-hero">
+    <div class="linkedin-container">
+        <div class="linkedin-hero-content">
+            <h1 class="linkedin-hero-title">Welcome to Luxadent Pro Training Center</h1>
+            <p class="linkedin-hero-subtitle">
+                Advance your dental expertise with professional courses and certifications. 
+                Learn from industry experts and enhance your practice with cutting-edge techniques.
+            </p>
         </div>
     </div>
 </div>
 
-<div class="container">
-    <!-- Category Filter -->
-    <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3>Available Courses</h3>
-            <AuthorizeView Roles="Admin,Instructor">
-                <Authorized>
-                    <a href="/admin/courses" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-gear"></i> Manage Courses
-                    </a>
-                </Authorized>
-            </AuthorizeView>
-        </div>
-        
-        <div class="btn-group flex-wrap" role="group">
+<div class="linkedin-container">
+    <!-- Category Navigation - LinkedIn Style -->
+    <div class="linkedin-nav-tabs">
+        <button type="button" 
+                class="linkedin-nav-tab @(_selectedCategoryId == null ? "active" : "")"
+                @onclick="() => FilterByCategory(null)">
+            All Courses
+            <span class="badge">@_allCoursesCount</span>
+        </button>
+        @foreach (var category in _categories)
+        {
             <button type="button" 
-                    class="btn @(_selectedCategoryId == null ? "btn-primary" : "btn-outline-primary")"
-                    @onclick="() => FilterByCategory(null)">
-                All Courses (@_allCoursesCount)
+                    class="linkedin-nav-tab @(_selectedCategoryId == category.Id ? "active" : "")"
+                    @onclick="() => FilterByCategory(category.Id)">
+                @category.Name
+                <span class="badge">@category.CourseCount</span>
             </button>
-            @foreach (var category in _categories)
+        }
+    </div>
+
+    <!-- Section Header -->
+    <div class="linkedin-section-header">
+        <h2 class="linkedin-section-title">
+            @if (_selectedCategoryId == null)
             {
-                <button type="button" 
-                        class="btn @(_selectedCategoryId == category.Id ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="() => FilterByCategory(category.Id)">
-                    @category.Name (@category.CourseCount)
-                </button>
+                <span>All Courses</span>
             }
-        </div>
+            else
+            {
+                var selectedCategory = _categories.FirstOrDefault(c => c.Id == _selectedCategoryId);
+                <span>@(selectedCategory?.Name ?? "Courses")</span>
+            }
+        </h2>
+        <AuthorizeView Roles="Admin,Instructor">
+            <Authorized>
+                <a href="/admin/courses" class="linkedin-section-action">
+                    <i class="bi bi-gear"></i>
+                    <span>Manage Courses</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
     </div>
 
     @if (_loading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading courses...</p>
+        <!-- LinkedIn-Style Loading Skeleton -->
+        <div class="linkedin-grid">
+            @for (int i = 0; i < 8; i++)
+            {
+                <div class="linkedin-skeleton linkedin-skeleton-card"></div>
+            }
         </div>
     }
     else if (_filteredCourses.Count == 0)
     {
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> No courses available in this category.
+        <div class="linkedin-empty-state">
+            <div class="linkedin-empty-state-icon">
+                <i class="bi bi-mortarboard"></i>
+            </div>
+            <h3 class="linkedin-empty-state-title">No courses available</h3>
+            <p class="linkedin-empty-state-description">
+                There are currently no courses in this category. Check back soon for new content!
+            </p>
         </div>
     }
     else
     {
-        <!-- Course Cards Grid -->
-        <div class="row g-4">
+        <!-- Course Cards Grid - LinkedIn Style -->
+        <div class="linkedin-grid">
             @foreach (var course in _filteredCourses)
             {
-                <div class="col-sm-6 col-lg-4">
-                    <div class="quiz-list-card">
+                <div class="linkedin-card linkedin-fade-in-up">
+                    <div class="linkedin-card-image-wrapper" @onclick="() => ViewCourse(course.Id)">
                         @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
                         {
-                            <div class="course-thumbnail">
-                                <img src="@course.ThumbnailUrl" alt="@course.Title" />
-                            </div>
+                            <img src="@course.ThumbnailUrl" alt="@course.Title" class="linkedin-card-image" />
                         }
-                        <div class="qlc-header" title="@course.Category">
-                            @(course.Category ?? "General")
+                        else
+                        {
+                            <div class="linkedin-card-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                        }
+                        @if (_enrolledCourseIds.Contains(course.Id))
+                        {
+                            <span class="linkedin-card-badge">Enrolled</span>
+                        }
+                    </div>
+                    
+                    <div class="linkedin-card-body">
+                        <div class="linkedin-card-category">@course.Category</div>
+                        <h3 class="linkedin-card-title" @onclick="() => ViewCourse(course.Id)">@course.Title</h3>
+                        <p class="linkedin-card-description">@course.ShortDescription</p>
+                        
+                        <div class="linkedin-card-meta">
+                            @if (course.EstimatedDurationHours > 0)
+                            {
+                                <div class="linkedin-card-meta-item">
+                                    <i class="bi bi-clock"></i>
+                                    <span>@course.EstimatedDurationHours hrs</span>
+                                </div>
+                            }
+                            @if (course.ModuleCount > 0)
+                            {
+                                <div class="linkedin-card-meta-item">
+                                    <i class="bi bi-collection-play"></i>
+                                    <span>@course.ModuleCount modules</span>
+                                </div>
+                            }
                         </div>
-                        <div class="qlc-body">
-                            <h6 class="qlc-title">@course.Title</h6>
-                            @if (!string.IsNullOrWhiteSpace(course.ShortDescription))
-                            {
-                                <p class="qlc-desc">@course.ShortDescription</p>
-                            }
-                            else
-                            {
-                                <p class="qlc-desc qlc-desc-empty fst-italic text-muted">No description provided.</p>
-                            }
-                            <div class="qlc-meta text-muted">
-                                <span><i class="bi bi-signal"></i> @course.DifficultyLevel</span>
-                                @if (course.EstimatedDurationHours > 0)
-                                {
-                                    <span>&bull; @course.EstimatedDurationHours hrs</span>
-                                }
-                                @if (course.Price > 0)
-                                {
-                                    <span>&bull; $@course.Price.ToString("F2")</span>
-                                }
-                                else
-                                {
-                                    <span>&bull; <span class="text-success">Free</span></span>
-                                }
+                        
+                        <div class="linkedin-card-footer">
+                            <div class="linkedin-card-instructor">
+                                <span class="linkedin-card-instructor-name">@course.CreatedByUserName</span>
                             </div>
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    <i class="bi bi-people"></i> @course.EnrollmentCount enrolled
-                                </small>
-                            </div>
-                        </div>
-                        <div class="qlc-footer">
-                            @if (_isEnrolled.ContainsKey(course.Id) && _isEnrolled[course.Id])
-                            {
-                                <span class="text-success">
-                                    <i class="bi bi-check-circle-fill"></i> Enrolled
-                                </span>
-                                <button class="btn btn-sm btn-outline-primary" 
-                                        @onclick="() => ViewCourse(course.Id)">
-                                    View Course &rsaquo;
-                                </button>
-                            }
-                            else
-                            {
-                                <AuthorizeView>
-                                    <Authorized>
-                                        <button class="btn btn-sm btn-primary w-100" 
-                                                @onclick="() => EnrollInCourse(course.Id)"
-                                                disabled="@_enrolling">
-                                            @if (_enrolling)
-                                            {
-                                                <span class="spinner-border spinner-border-sm me-1"></span>
-                                            }
-                                            <i class="bi bi-plus-circle"></i> Enroll Now
-                                        </button>
-                                    </Authorized>
-                                    <NotAuthorized>
-                                        <a href="/login" class="btn btn-sm btn-outline-primary w-100">
-                                            <i class="bi bi-box-arrow-in-right"></i> Login to Enroll
-                                        </a>
-                                    </NotAuthorized>
-                                </AuthorizeView>
-                            }
                         </div>
                     </div>
                 </div>
@@ -163,25 +149,76 @@
     }
 
     <!-- Quizzes Section -->
-    <div class="mt-5 pt-4 border-top">
-        <h3 class="mb-3">Quick Practice Quizzes</h3>
-        <p class="text-muted mb-4">Test your knowledge with our interactive quizzes</p>
-        
-        @if (quizzes == null)
-        {
-            <LoadingSpinner Message="Loading quizzes..." />
-        }
-        else if (!quizzes.Any())
-        {
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> No quizzes available at the moment.
-            </div>
-        }
-        else
-        {
-            <QuizCardGrid Quizzes="@quizzes" OnQuizSelected="@NavigateToQuiz" />
-        }
+    <div class="linkedin-divider"></div>
+    
+    <div class="linkedin-section-header">
+        <h2 class="linkedin-section-title">Quick Practice Quizzes</h2>
+        <a href="/quizzes" class="linkedin-section-action">
+            <span>View All</span>
+            <i class="bi bi-arrow-right"></i>
+        </a>
     </div>
+    
+    <p class="linkedin-text-secondary mb-4">Test your knowledge with our interactive quizzes</p>
+    
+    @if (_quizzes == null)
+    {
+        <div class="linkedin-grid">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="linkedin-skeleton linkedin-skeleton-card"></div>
+            }
+        </div>
+    }
+    else if (!_quizzes.Any())
+    {
+        <div class="linkedin-empty-state">
+            <div class="linkedin-empty-state-icon">
+                <i class="bi bi-question-circle"></i>
+            </div>
+            <h3 class="linkedin-empty-state-title">No quizzes available</h3>
+            <p class="linkedin-empty-state-description">
+                Check back soon for new quizzes to test your knowledge!
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="linkedin-grid">
+            @foreach (var quiz in _quizzes.Take(4))
+            {
+                <div class="linkedin-card linkedin-fade-in-up">
+                    <div class="linkedin-card-body">
+                        <div class="linkedin-card-category">Quiz</div>
+                        <h3 class="linkedin-card-title">@quiz.Title</h3>
+                        <p class="linkedin-card-description">@quiz.Description</p>
+                        
+                        <div class="linkedin-card-meta">
+                            <div class="linkedin-card-meta-item">
+                                <i class="bi bi-question-circle"></i>
+                                <span>@quiz.QuestionCount questions</span>
+                            </div>
+                            @if (quiz.TimeLimitMinutes.HasValue)
+                            {
+                                <div class="linkedin-card-meta-item">
+                                    <i class="bi bi-clock"></i>
+                                    <span>@quiz.TimeLimitMinutes min</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 0 16px 16px;">
+                        <button class="linkedin-btn linkedin-btn-primary linkedin-btn-block"
+                                @onclick="() => NavigateToQuiz(quiz.Id)">
+                            <i class="bi bi-play-circle"></i>
+                            Start Quiz
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 </div>
 
 @if (!string.IsNullOrEmpty(_message))
@@ -211,16 +248,15 @@
 }
 
 @code {
-    private List<QuizCardDto>? quizzes;
+    private List<QuizCardDto>? _quizzes;
     private List<CourseListDto> _courses = new();
     private List<CourseListDto> _filteredCourses = new();
     private List<CourseCategoryDto> _categories = new();
-    private Dictionary<int, bool> _isEnrolled = new();
+    private HashSet<int> _enrolledCourseIds = new();
     
     private bool _loading = true;
-    private bool _enrolling = false;
-    private int? _selectedCategoryId = null;
-    private int _allCoursesCount = 0;
+    private int? _selectedCategoryId;
+    private int _allCoursesCount;
     private string _message = string.Empty;
     private string _messageType = "success";
     private string? _currentUserId;
@@ -272,8 +308,7 @@
 
     private async Task LoadQuizzes()
     {
-        quizzes = await QuizService.
-            GetAvailableQuizzesAsync();
+        _quizzes = await QuizService.GetAvailableQuizzesAsync();
     }
 
     private async Task CheckEnrollmentStatus()
@@ -281,7 +316,7 @@
         if (string.IsNullOrEmpty(_currentUserId)) return;
 
         var enrolledCourseIds = await CourseService.GetUserEnrolledCourseIdsAsync(_currentUserId);
-        _isEnrolled = _courses.ToDictionary(c => c.Id, c => enrolledCourseIds.Contains(c.Id));
+        _enrolledCourseIds = enrolledCourseIds.ToHashSet();
     }
 
     private void FilterByCategory(int? categoryId)
@@ -298,42 +333,9 @@
         }
     }
 
-    private async Task EnrollInCourse(int courseId)
-    {
-        if (string.IsNullOrEmpty(_currentUserId))
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-
-        _enrolling = true;
-        try
-        {
-            var result = await CourseService.EnrollUserAsync(courseId, _currentUserId);
-            if (result.Success)
-            {
-                _isEnrolled[courseId] = true;
-                ShowMessage("Successfully enrolled in course!", "success");
-                await LoadCourses(); // Refresh enrollment count
-            }
-            else
-            {
-                ShowMessage(string.Join(", ", result.Errors), "error");
-            }
-        }
-        catch (Exception ex)
-        {
-            ShowMessage($"Error enrolling in course: {ex.Message}", "error");
-        }
-        finally
-        {
-            _enrolling = false;
-        }
-    }
-
     private void ViewCourse(int courseId)
     {
-        Navigation.NavigateTo($"/course/{courseId}");
+        Navigation.NavigateTo($"/courses/{courseId}");
     }
 
     private void NavigateToQuiz(int quizId)

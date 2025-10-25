@@ -1,6 +1,8 @@
 ﻿Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dentor.Academy.Web", "Dentor.Academy.Web\Dentor.Academy.Web.csproj", "{F8DBC5F0-8D33-4D95-BD4D-274A396CDA7A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dentor.Solutions.Academy", "Dentor.Solutions.Academy\Dentor.Solutions.Academy.csproj", "{ACCA0734-6D87-4064-99A7-CE3F462A98D4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -11,5 +13,9 @@ Global
 		{F8DBC5F0-8D33-4D95-BD4D-274A396CDA7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8DBC5F0-8D33-4D95-BD4D-274A396CDA7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8DBC5F0-8D33-4D95-BD4D-274A396CDA7A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACCA0734-6D87-4064-99A7-CE3F462A98D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACCA0734-6D87-4064-99A7-CE3F462A98D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACCA0734-6D87-4064-99A7-CE3F462A98D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACCA0734-6D87-4064-99A7-CE3F462A98D4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

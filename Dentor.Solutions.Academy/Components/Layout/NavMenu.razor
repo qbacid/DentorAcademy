@@ -1,0 +1,128 @@
+﻿@rendermode InteractiveServer
+
+@using System.Collections.ObjectModel
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<div class="navmenu">
+    <input type="checkbox" title="Menu expand/collapse toggle" id="navmenu-toggle" class="navmenu-icon"/>
+    <label for="navmenu-toggle" class="navmenu-icon">
+        <FluentIcon Value="@(new Icons.Regular.Size20.Navigation())" Color="Color.Fill"/>
+    </label>
+    <nav class="sitenav" aria-labelledby="main-menu">
+        <FluentNavMenu Id="main-menu" Collapsible="true" Width="240" Title="Navigation menu" @bind-Expanded="expanded"
+                       CustomToggle="true">
+            <FluentNavLink Href="/" Match="NavLinkMatch.All"
+                           Style="font-size: large;font-weight: lighter;"
+                           Icon="@(new Icons.Regular.Size24.Home().WithColor(Color.Accent))">
+                Home
+            </FluentNavLink>
+
+            <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                           Href="courses" Icon="@(new Icons.Regular.Size24.BookOpen().WithColor(Color.Accent))">
+                Courses
+            </FluentNavLink>
+
+            <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                           Href="practices" Icon="@(new Icons.Regular.Size24.Library().WithColor(Color.Accent))">
+                Practices
+            </FluentNavLink>
+
+            <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                           Href="quizzes" Icon="@(new Icons.Regular.Size24.Brain().WithColor(Color.Accent))">
+                Quizzes
+            </FluentNavLink>
+
+            <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                           Href="my-performance"
+                           Icon="@(new Icons.Regular.Size24.BrainCircuit().WithColor(Color.Accent))">
+                My Performance
+            </FluentNavLink>
+
+            <FluentNavGroup Title="Management" Tooltip="Course Management"
+                            Style="font-size: large;font-weight: lighter;"
+                            Expanded="true"
+                            Icon="@(new Icons.Regular.Size24.ChartPerson().WithColor(Color.Accent))">
+
+                <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                               Href="admin/categories"
+                               Icon="@(new Icons.Regular.Size24.DocumentFolder().WithColor(Color.Accent))">
+                    Categories
+                </FluentNavLink>
+
+                <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                               Href="admin/courses"
+                               Icon="@(new Icons.Regular.Size24.BookOpen().WithColor(Color.Accent))">
+                    Courses
+                </FluentNavLink>
+
+
+                <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                               Href="admin/quizzes"
+                               Icon="@(new Icons.Regular.Size24.TextBulletListSquare().WithColor(Color.Accent))">
+                    Quizzes
+                </FluentNavLink>
+            </FluentNavGroup>
+
+            <FluentNavGroup Title="Accounts" Tooltip="Accounts Management"
+                            Style="font-size: large;font-weight: lighter;"
+                            Expanded="true"
+                            Icon="@(new Icons.Regular.Size24.PeopleSettings().WithColor(Color.Accent))">
+                <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                               Href="admin/users"
+                               Icon="@(new Icons.Regular.Size24.Document().WithColor(Color.Accent))">
+                    Users
+                </FluentNavLink>
+
+                <FluentNavLink Style="font-size: large;font-weight: lighter;"
+                               Href="admin/instructor"
+                               Icon="@(new Icons.Regular.Size24.PeopleCommunity().WithColor(Color.Accent))">
+                    Instructors
+                </FluentNavLink>
+            </FluentNavGroup>
+
+            <AuthorizeView>
+                <Authorized>
+                    <FluentNavLink Href="Account/Manage">@context.User.Identity?.Name</FluentNavLink>
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken/>
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl"/>
+                        <FluentButton Type="ButtonType.Submit"
+                                      Style="width: 100%;"
+                                      AdditionalAttributes="@(new Dictionary<string, object?>() { { "tooltip", "Logout" } })"
+                                      IconStart="@(new Icons.Regular.Size20.SignOut().WithColor(Color.Accent))">
+                        </FluentButton>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <FluentNavLink Href="Account/Register">Register</FluentNavLink>
+                    <FluentNavLink Href="Account/Login">Login</FluentNavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </FluentNavMenu>
+    </nav>
+</div>
+
+@code {
+    private bool expanded = true;
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+}

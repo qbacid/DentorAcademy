@@ -1,0 +1,59 @@
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<AuthorizeView>
+    <Authorized>
+        <FluentPersona Name="@context.User.Identity?.Name" 
+                      ImageSize="32px"
+                      Style="cursor: pointer;"
+                      @onclick="ToggleMenu">
+        </FluentPersona>
+        
+        @if (_showMenu)
+        {
+            <FluentMenu @bind-Open="_showMenu" Anchor="menu-anchor">
+                <FluentMenuItem OnClick="@(() => NavigateTo("/account/profile"))">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Person())" Slot="start" />
+                    My Profile
+                </FluentMenuItem>
+                <FluentMenuItem OnClick="@(() => NavigateTo("/my-performance"))">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ChartMultiple())" Slot="start" />
+                    My Performance
+                </FluentMenuItem>
+                <FluentMenuItem OnClick="@(() => NavigateTo("/account/change-password"))">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.LockClosed())" Slot="start" />
+                    Change Password
+                </FluentMenuItem>
+                <FluentDivider Role="DividerRole.Presentation" Style="margin: 8px 0;" />
+                <FluentMenuItem OnClick="@(() => NavigateTo("/account/logout"))">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.SignOut())" Slot="start" Color="Color.Error" />
+                    <span style="color: #d13438;">Logout</span>
+                </FluentMenuItem>
+            </FluentMenu>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <FluentButton Appearance="Appearance.Accent" 
+                     OnClick="@(() => Navigation.NavigateTo("/login"))">
+            <FluentIcon Value="@(new Icons.Regular.Size20.PersonArrowRight())" Slot="start" />
+            Sign In
+        </FluentButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private bool _showMenu;
+
+    private void ToggleMenu()
+    {
+        _showMenu = !_showMenu;
+    }
+
+    private void NavigateTo(string url)
+    {
+        _showMenu = false;
+        Navigation.NavigateTo(url);
+    }
+}

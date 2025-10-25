@@ -1,0 +1,753 @@
+@page "/admin/courses"
+
+@using Dentor.Academy.WebApp.DTOs.User
+@using Dentor.Solutions.Academy.Data
+@using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Interfaces
+@using Dentor.Solutions.Academy.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Dentor.Solutions.Academy.Components.Admin.Categories
+
+@inject IDialogService DialogService
+@inject IMessageService MessageService
+@inject ICourseManagementService CourseService
+@inject ICourseCategoryService CategoryService
+@inject IUserManagementService UserService
+@inject NavigationManager Navigation
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+@attribute [Authorize(Roles = "Admin,Instructor")]
+@rendermode InteractiveServer
+
+<PageTitle>Course Management - DentorAcademy</PageTitle>
+
+<FluentLabel Typo="Typography.HeroTitle"
+             Style="padding-bottom: 10px; padding-top: 10px;">Manage Courses</FluentLabel>
+<FluentDivider Style="margin-bottom: 10px;"/>
+
+<FluentStack Orientation="Orientation.Vertical" Id="course_container"
+             Style="padding: 2rem; margin: 0 auto; width: 100%;">
+    
+    <!-- Header Section -->
+    <FluentStack Orientation="Orientation.Horizontal"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 2rem; width: 100%;">
+        <FluentStack Orientation="Orientation.Vertical" Style="flex: 1;">
+            <FluentLabel Typo="Typography.H3">
+                <FluentIcon Value="@(new Icons.Regular.Size24.BookOpen())"/>
+                Course Management
+            </FluentLabel>
+            <FluentLabel Typo="Typography.Body">Create and manage courses, categories, and assignments</FluentLabel>
+        </FluentStack>
+        <FluentButton Appearance="Appearance.Accent"
+                     OnClick="ShowCreateCourseDialog"
+                     IconStart="@(new Icons.Regular.Size20.AddCircle())">
+            New Course
+        </FluentButton>
+    </FluentStack>
+
+    <!-- Statistics Cards -->
+    <FluentGrid Spacing="3" Style="margin-bottom: 2rem; width: 100%;">
+        <FluentGridItem xs="12" sm="6" md="3">
+            <CardHeader IconColor="Color.Accent" 
+                        IconHeader="@(new Icons.Regular.Size32.BookOpen())"
+                        Total="@_courses.Count"
+                        Description="Total Courses" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="3">
+            <CardHeader IconColor="Color.Success" 
+                        Total="@_courses.Count(c => c.IsPublished)" 
+                        Description="Published Courses"
+                        IconHeader="@(new Icons.Regular.Size32.CheckmarkCircle())" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="3">
+            <CardHeader IconColor="Color.Warning" 
+                        Total="@_courses.Count(c => !c.IsPublished)" 
+                        Description="Draft Courses"
+                        IconHeader="@(new Icons.Regular.Size32.Document())" />
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="3">
+            <CardHeader IconColor="Color.Info" 
+                        Total="@_courses.Sum(c => c.EnrollmentCount)" 
+                        Description="Total Enrollments"
+                        IconHeader="@(new Icons.Regular.Size32.People())" />
+        </FluentGridItem>
+    </FluentGrid>
+
+    <!-- Courses Content Card -->
+    <FluentCard MinimalStyle="true">
+        <!-- Toolbar with Filters and View Toggle -->
+        <FluentStack Orientation="Orientation.Horizontal" 
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Style="margin-bottom: 1rem; flex-wrap: wrap; gap: 12px;">
+            <FluentLabel Typo="Typography.H5" Style="flex: 1;">
+                <FluentIcon Value="@(new Icons.Regular.Size20.List())"/>
+                All Courses
+            </FluentLabel>
+            
+            <!-- Filters -->
+            <FluentSelect @bind-Value="_filterCategoryId"
+                         @bind-Value:after="ApplyFilters"
+                         Style="min-width: 200px;"
+                         TOption="string">
+                <FluentOption Value="">All Categories</FluentOption>
+                @foreach (var category in _categories)
+                {
+                    <FluentOption Value="@category.Id.ToString()">@category.Name</FluentOption>
+                }
+            </FluentSelect>
+
+            <FluentSelect @bind-Value="_filterPublished"
+                         @bind-Value:after="ApplyFilters"
+                         Style="min-width: 180px;"
+                         TOption="string">
+                <FluentOption Value="">All Status</FluentOption>
+                <FluentOption Value="true">Published</FluentOption>
+                <FluentOption Value="false">Draft</FluentOption>
+            </FluentSelect>
+
+            <FluentSearch @bind-Value="_searchTerm"
+                         @bind-Value:after="ApplyFilters"
+                         Placeholder="Search courses..."
+                         Style="min-width: 250px;"/>
+            
+            <!-- View Toggle -->
+            <FluentButton IconEnd="@(new Icons.Regular.Size20.Grid())"
+                          Appearance="@(_viewMode == "grid" ? Appearance.Accent : Appearance.Outline)"
+                          OnClick="@(() => _viewMode = "grid")">
+                Grid
+            </FluentButton>
+            <FluentButton IconEnd="@(new Icons.Regular.Size20.List())"
+                          Appearance="@(_viewMode == "list" ? Appearance.Accent : Appearance.Outline)"
+                          OnClick="@(() => _viewMode = "list")">
+                List
+            </FluentButton>
+        </FluentStack>
+
+    <!-- Courses Grid -->
+    @if (_loading)
+    {
+        <FluentStack HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 4rem 2rem;">
+            <FluentProgressRing/>
+            <FluentLabel>Loading courses...</FluentLabel>
+        </FluentStack>
+    }
+    else if (_filteredCourses.Count == 0)
+    {
+        <FluentStack Orientation="Orientation.Vertical"
+                    HorizontalAlignment="HorizontalAlignment.Center"
+                    Style="padding: 4rem 2rem;">
+            <FluentIcon Value="@(new Icons.Regular.Size48.BookOpen())" Color="Color.Neutral"/>
+            <FluentLabel Typo="Typography.H4">No courses found</FluentLabel>
+            <FluentLabel Style="color: #666;">@(_courses.Any() ? "Try adjusting your filters" : "Create your first course to get started!")</FluentLabel>
+            @if (!_courses.Any())
+            {
+                <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreateCourseDialog" Style="margin-top: 16px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.AddCircle())" Slot="start"/>
+                    Create Course
+                </FluentButton>
+            }
+        </FluentStack>
+    }
+    else if (_viewMode == "grid")
+    {
+        <FluentGrid Spacing="4" Style="padding: 1rem 0;">
+            @foreach (var course in _filteredCourses)
+            {
+                <FluentGridItem xs="12" sm="6" md="4">
+                    <FluentCard Style="@($"height: 100%; border-left: 4px solid {(course.IsPublished ? "#10b981" : "#f59e0b")}; transition: all 0.3s ease; cursor: pointer;")">
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+                            <!-- Course Thumbnail -->
+                            @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                            {
+                                <div style="width: 100%; height: 160px; border-radius: 8px; overflow: hidden;">
+                                    <img src="@course.ThumbnailUrl" alt="@course.Title" style="width: 100%; height: 100%; object-fit: cover;"/>
+                                </div>
+                            }
+                            else
+                            {
+                                <FluentStack Orientation="Orientation.Vertical"
+                                            HorizontalAlignment="HorizontalAlignment.Center"
+                                            VerticalAlignment="VerticalAlignment.Center"
+                                            Style="width: 100%; height: 160px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <FluentIcon Value="@(new Icons.Regular.Size48.BookOpen())" Color="Color.Fill"/>
+                                </FluentStack>
+                            }
+
+                            <!-- Header with Actions -->
+                            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold" Style="flex: 1; font-size: 1.1rem; line-height: 1.4;">
+                                    @course.Title
+                                </FluentLabel>
+                                <FluentSpacer/>
+                                <FluentButton Appearance="Appearance.Lightweight"
+                                             OnClick="@(() => EditCourse(course.Id))"
+                                             Title="Edit Course">
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Edit())" Color="Color.Accent"/>
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Lightweight"
+                                             OnClick="@(() => DeleteCourse(course.Id))"
+                                             Title="Delete Course">
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Delete())" Color="Color.Error"/>
+                                </FluentButton>
+                            </FluentStack>
+
+                            <!-- Category -->
+                            @if (!string.IsNullOrEmpty(course.Category))
+                            {
+                                <FluentBadge Appearance="Appearance.Accent" Style="width: fit-content;">
+                                    @course.Category
+                                </FluentBadge>
+                            }
+
+                            <!-- Short Description -->
+                            @if (!string.IsNullOrWhiteSpace(course.ShortDescription))
+                            {
+                                <FluentLabel Typo="Typography.Body" 
+                                            Style="color: #666; font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    @course.ShortDescription
+                                </FluentLabel>
+                            }
+
+                            <FluentDivider Style="margin: 4px 0;"/>
+
+                            <!-- Course Metadata -->
+                            <FluentStack Orientation="Orientation.Horizontal" Wrap="true" VerticalGap="8">
+                                <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.DataHistogram())" Color="Color.Neutral"/>
+                                    <FluentLabel Typo="Typography.Body" Style="font-size: 0.85rem;">
+                                        @course.DifficultyLevel
+                                    </FluentLabel>
+                                </FluentStack>
+                                
+                                @if (course.EstimatedDurationHours > 0)
+                                {
+                                    <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Clock())" Color="Color.Neutral"/>
+                                        <FluentLabel Typo="Typography.Body" Style="font-size: 0.85rem;">
+                                            @course.EstimatedDurationHours hrs
+                                        </FluentLabel>
+                                    </FluentStack>
+                                }
+                            </FluentStack>
+
+                            <!-- Stats and Status -->
+                            <FluentStack Orientation="Orientation.Horizontal" Wrap="true" VerticalGap="8">
+                                <FluentBadge Appearance="Appearance.Neutral">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.People())" Slot="start"/>
+                                    @course.EnrollmentCount
+                                </FluentBadge>
+                                <FluentBadge Appearance="Appearance.Neutral">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.BookOpen())" Slot="start"/>
+                                    @course.ModuleCount modules
+                                </FluentBadge>
+                                @if (course.IsPublished)
+                                {
+                                    <FluentBadge BackgroundColor="var(--success)" Color="white">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.CheckmarkCircle())" Slot="start"/>
+                                        Published
+                                    </FluentBadge>
+                                }
+                                else
+                                {
+                                    <FluentBadge BackgroundColor="#f59e0b" Color="white">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Document())" Slot="start"/>
+                                        Draft
+                                    </FluentBadge>
+                                }
+                            </FluentStack>
+
+                            <!-- Action Buttons -->
+                            <FluentDivider Style="margin: 8px 0;"/>
+                            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center" VerticalGap="8">
+                                <FluentButton Appearance="Appearance.Outline"
+                                             IconStart="@(new Icons.Regular.Size16.BookOpen())"
+                                             OnClick="@(() => ManageContent(course.Id))"
+                                             Title="Manage Content">
+                                    Content
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Outline"
+                                             IconStart="@(new Icons.Regular.Size16.PersonAdd())"
+                                             OnClick="@(() => ManageAssignments(course.Id))"
+                                             Title="Assign Students">
+                                    Assign
+                                </FluentButton>
+                            </FluentStack>
+                        </FluentStack>
+                    </FluentCard>
+                </FluentGridItem>
+            }
+        </FluentGrid>
+    }
+    else
+    {
+        <!-- List View -->
+        <FluentDataGrid Items="@_filteredCourses.AsQueryable()"
+                       TGridItem="CourseListDto"
+                       Style="width: 100%;"
+                       ResizableColumns="true"
+                       RowSize="DataGridRowSize.Large">
+            
+            <PropertyColumn Property="@(c => c.Title)" 
+                           Sortable="true" 
+                           Title="Course Title"
+                           HeaderTooltip="Course Title"/>
+            
+            <TemplateColumn Title="Category" Sortable="true">
+                @if (!string.IsNullOrEmpty(context.Category))
+                {
+                    <FluentBadge Appearance="Appearance.Accent">
+                        @context.Category
+                    </FluentBadge>
+                }
+                else
+                {
+                    <FluentLabel Style="color: #999;">Uncategorized</FluentLabel>
+                }
+            </TemplateColumn>
+            
+            <PropertyColumn Property="@(c => c.DifficultyLevel)" 
+                           Sortable="true" 
+                           Title="Level"
+                           HeaderTooltip="Difficulty Level"/>
+            
+            <TemplateColumn Title="Price" Sortable="true" Align="Align.Center">
+                @if (context.Price > 0)
+                {
+                    <FluentLabel>${@context.Price.ToString("F2")}</FluentLabel>
+                }
+                else
+                {
+                    <FluentBadge BackgroundColor="green" Color="white">Free</FluentBadge>
+                }
+            </TemplateColumn>
+            
+            <TemplateColumn Title="Enrollments" Align="Align.Center">
+                <FluentBadge Appearance="Appearance.Neutral">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.People())" Slot="start"/>
+                    @context.EnrollmentCount
+                </FluentBadge>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Modules" Align="Align.Center">
+                <FluentBadge Appearance="Appearance.Neutral">
+                    @context.ModuleCount
+                </FluentBadge>
+            </TemplateColumn>
+            
+            <TemplateColumn Title="Status">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                    @if (context.IsPublished)
+                    {
+                        <FluentBadge BackgroundColor="var(--success)" Color="white">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.CheckmarkCircle())" Slot="start"/>
+                            Published
+                        </FluentBadge>
+                    }
+                    else
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.Document())" Slot="start"/>
+                            Draft
+                        </FluentBadge>
+                    }
+                    @if (context.IsFeatured)
+                    {
+                        <FluentBadge BackgroundColor="gold" Color="black">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.Star())" Slot="start"/>
+                            Featured
+                        </FluentBadge>
+                    }
+                </FluentStack>
+            </TemplateColumn>
+            
+            <TemplateColumn Title="Actions" Align="Align.Center">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4">
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                 OnClick="@(() => ManageContent(context.Id))"
+                                 Title="Manage Content">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.BookOpen())" Color="Color.Neutral"/>
+                    </FluentButton>
+                    
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                 OnClick="@(() => EditCourse(context.Id))"
+                                 Title="Edit">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Edit())" Color="Color.Accent"/>
+                    </FluentButton>
+                    
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                 OnClick="@(() => ManageAssignments(context.Id))"
+                                 Title="Assign Students">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.PersonAdd())" Color="Color.Info"/>
+                    </FluentButton>
+                    
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                 OnClick="@(() => DeleteCourse(context.Id))"
+                                 Title="Delete">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Delete())" Color="Color.Error"/>
+                    </FluentButton>
+                </FluentStack>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+    </FluentCard>
+</FluentStack>
+
+@code {
+    private List<CourseListDto> _courses = new();
+    private List<CourseListDto> _filteredCourses = new();
+    private List<CourseCategoryDto> _categories = new();
+    private List<UserDto> _students = new();
+    private List<UserDto> _instructors = new();
+    
+    private bool _loading = true;
+    private string _viewMode = "grid";
+    private string _filterCategoryId = "";
+    private string _filterPublished = "";
+    private string _searchTerm = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            await Task.WhenAll(
+                LoadCourses(),
+                LoadCategories(),
+                LoadUsers()
+            );
+            ApplyFilters();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadCourses()
+    {
+        _courses = await CourseService.GetAllCoursesAsync();
+    }
+
+    private async Task LoadCategories()
+    {
+        _categories = await CategoryService.GetAllCategoriesAsync();
+    }
+
+    private async Task LoadUsers()
+    {
+        var allUsers = await UserService.GetAllUsersAsync();
+        _students = allUsers.Where(u => u.Roles.Contains("Student")).ToList();
+        _instructors = allUsers.Where(u => u.Roles.Contains("Instructor") || u.Roles.Contains("Admin")).ToList();
+    }
+
+    private void ApplyFilters()
+    {
+        _filteredCourses = _courses;
+
+        // Filter by category
+        if (!string.IsNullOrEmpty(_filterCategoryId) && int.TryParse(_filterCategoryId, out int categoryId))
+        {
+            _filteredCourses = _filteredCourses.Where(c => c.CategoryId == categoryId).ToList();
+        }
+
+        // Filter by published status
+        if (!string.IsNullOrEmpty(_filterPublished) && bool.TryParse(_filterPublished, out bool isPublished))
+        {
+            _filteredCourses = _filteredCourses.Where(c => c.IsPublished == isPublished).ToList();
+        }
+
+        // Filter by search term
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            _filteredCourses = _filteredCourses
+                .Where(c => c.Title.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                           (!string.IsNullOrEmpty(c.ShortDescription) && c.ShortDescription.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+    }
+
+    private async Task ShowCreateCourseDialog()
+    {
+        var course = new CourseDto { DifficultyLevel = DifficultyLevel.Beginner };
+        var dialogData = new CourseDialogData
+        {
+            Course = course,
+            Categories = _categories,
+            TagsString = "",
+            ObjectivesString = "",
+            PrerequisitesString = ""
+        };
+
+        var dialog = await DialogService.ShowDialogAsync<CourseCreateDialog>(dialogData, new DialogParameters
+        {
+            Title = "Create New Course",
+            PrimaryAction = "Save Course",
+            SecondaryAction = "Cancel",
+            Width = "800px",
+            Height = "90vh",
+            Modal = true,
+            PreventDismissOnOverlayClick = true
+        });
+
+        var result = await dialog.Result;
+        if (!result.Cancelled && result.Data is CourseDialogData data)
+        {
+            await SaveCourse(data);
+        }
+    }
+
+    private async Task EditCourse(int courseId)
+    {
+        var course = await CourseService.GetCourseByIdAsync(courseId);
+        if (course != null)
+        {
+            var dialogData = new CourseDialogData
+            {
+                Course = course,
+                Categories = _categories,
+                TagsString = course.Tags != null ? string.Join(", ", course.Tags) : "",
+                ObjectivesString = course.LearningObjectives != null ? string.Join(", ", course.LearningObjectives) : "",
+                PrerequisitesString = course.Prerequisites != null ? string.Join(", ", course.Prerequisites) : ""
+            };
+
+            var dialog = await DialogService.ShowDialogAsync<CourseCreateDialog>(dialogData, new DialogParameters
+            {
+                Title = "Edit Course",
+                PrimaryAction = "Save Changes",
+                SecondaryAction = "Cancel",
+                Width = "800px",
+                Height = "90vh",
+                Modal = true,
+                PreventDismissOnOverlayClick = true
+            });
+
+            var result = await dialog.Result;
+            if (!result.Cancelled && result.Data is CourseDialogData data)
+            {
+                await SaveCourse(data);
+            }
+        }
+    }
+
+    private async Task SaveCourse(CourseDialogData data)
+    {
+        if (string.IsNullOrWhiteSpace(data.Course.Title))
+        {
+            MessageService.ShowMessageBar(options =>
+            {
+                options.Title = "Validation Error";
+                options.Body = "Please enter a course title";
+                options.Intent = MessageIntent.Error;
+            });
+            return;
+        }
+
+        try
+        {
+            // Parse comma-separated strings
+            data.Course.Tags = data.TagsString.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrEmpty(t)).ToList();
+            data.Course.LearningObjectives = data.ObjectivesString.Split(',').Select(o => o.Trim()).Where(o => !string.IsNullOrEmpty(o)).ToList();
+            data.Course.Prerequisites = data.PrerequisitesString.Split(',').Select(p => p.Trim()).Where(p => !string.IsNullOrEmpty(p)).ToList();
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = UserManager.GetUserId(authState.User);
+
+            CategoryOperationResult result;
+            if (data.Course.Id == 0)
+            {
+                result = await CourseService.CreateCourseAsync(data.Course, userId!);
+            }
+            else
+            {
+                result = await CourseService.UpdateCourseAsync(data.Course);
+            }
+
+            if (result.Success)
+            {
+                MessageService.ShowMessageBar(options =>
+                {
+                    options.Title = "Success";
+                    options.Body = result.Message;
+                    options.Intent = MessageIntent.Success;
+                });
+                await LoadCourses();
+                ApplyFilters();
+            }
+            else
+            {
+                MessageService.ShowMessageBar(options =>
+                {
+                    options.Title = "Error";
+                    options.Body = string.Join(", ", result.Errors);
+                    options.Intent = MessageIntent.Error;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageService.ShowMessageBar(options =>
+            {
+                options.Title = "Error";
+                options.Body = $"Error saving course: {ex.Message}";
+                options.Intent = MessageIntent.Error;
+            });
+        }
+    }
+
+    private async Task DeleteCourse(int courseId)
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Are you sure you want to delete this course? This action cannot be undone.",
+            "Delete Course",
+            "Delete",
+            "Cancel");
+
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            try
+            {
+                var deleteResult = await CourseService.DeleteCourseAsync(courseId);
+                if (deleteResult.Success)
+                {
+                    MessageService.ShowMessageBar(options =>
+                    {
+                        options.Title = "Success";
+                        options.Body = "Course deleted successfully";
+                        options.Intent = MessageIntent.Success;
+                    });
+                    await LoadCourses();
+                    ApplyFilters();
+                }
+                else
+                {
+                    MessageService.ShowMessageBar(options =>
+                    {
+                        options.Title = "Error";
+                        options.Body = string.Join(", ", deleteResult.Errors);
+                        options.Intent = MessageIntent.Error;
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageService.ShowMessageBar(options =>
+                {
+                    options.Title = "Error";
+                    options.Body = $"Error deleting course: {ex.Message}";
+                    options.Intent = MessageIntent.Error;
+                });
+            }
+        }
+    }
+
+    private async Task ManageAssignments(int courseId)
+    {
+        // Prepare assignment data
+        var assignmentData = new CourseAssignmentData
+        {
+            CourseId = courseId,
+            Students = _students.Select(s => new UserSelectionDto
+            {
+                Id = s.Id,
+                UserName = s.UserName,
+                Email = s.Email,
+                IsSelected = false
+            }).ToList(),
+            Instructors = _instructors.Select(i => new UserSelectionDto
+            {
+                Id = i.Id,
+                UserName = i.UserName,
+                Email = i.Email,
+                IsSelected = false
+            }).ToList()
+        };
+
+        // Load existing enrollments
+        try
+        {
+            var enrollments = await CourseService.GetCourseEnrollmentsAsync(courseId);
+            var enrolledIds = enrollments.Select(e => e.UserId).ToHashSet();
+            
+            foreach (var student in assignmentData.Students)
+            {
+                student.IsSelected = enrolledIds.Contains(student.Id);
+            }
+        }
+        catch { /* Ignore errors loading existing enrollments */ }
+
+        var dialog = await DialogService.ShowDialogAsync<CourseAssignmentDialog>(assignmentData, new DialogParameters
+        {
+            Title = "Manage Course Assignments",
+            PrimaryAction = "Save Assignments",
+            SecondaryAction = "Cancel",
+            Width = "700px",
+            Height = "80vh",
+            Modal = true
+        });
+
+        var result = await dialog.Result;
+        if (!result.Cancelled && result.Data is CourseAssignmentData data)
+        {
+            await SaveAssignments(data);
+        }
+    }
+
+    private async Task SaveAssignments(CourseAssignmentData data)
+    {
+        try
+        {
+            var selectedStudentIds = data.Students.Where(s => s.IsSelected).Select(s => s.Id).ToList();
+            
+            if (selectedStudentIds.Any())
+            {
+                var result = await CourseService.BulkEnrollUsersAsync(data.CourseId, selectedStudentIds);
+                if (result.Success)
+                {
+                    MessageService.ShowMessageBar(options =>
+                    {
+                        options.Title = "Success";
+                        options.Body = $"Successfully enrolled {selectedStudentIds.Count} students";
+                        options.Intent = MessageIntent.Success;
+                    });
+                }
+                else
+                {
+                    MessageService.ShowMessageBar(options =>
+                    {
+                        options.Title = "Error";
+                        options.Body = string.Join(", ", result.Errors);
+                        options.Intent = MessageIntent.Error;
+                    });
+                }
+            }
+
+            await LoadCourses();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            MessageService.ShowMessageBar(options =>
+            {
+                options.Title = "Error";
+                options.Body = $"Error saving assignments: {ex.Message}";
+                options.Intent = MessageIntent.Error;
+            });
+        }
+    }
+
+    private void ManageContent(int courseId)
+    {
+        Navigation.NavigateTo($"/admin/courses/{courseId}/content");
+    }
+}
+
+

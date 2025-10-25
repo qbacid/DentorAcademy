@@ -1,0 +1,38 @@
+@using Dentor.Solutions.Academy.DTOs.Course
+@implements IDialogContentComponent<Dentor.Solutions.Academy.DTOs.Course.UpdateCourseCategoryDto>
+
+<FluentDialogHeader>
+    <FluentLabel Typo="Typography.PaneHeader">
+        Edit Course Category
+    </FluentLabel>
+    <FluentDivider Orientation="Orientation.Horizontal"/>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentGrid Spacing="2" AdaptiveRendering="true" Justify="JustifyContent.FlexStart">
+
+        <FluentGridItem xs="12" sm="12">
+            <FluentLabel>Category Name:</FluentLabel>
+            <FluentTextField @bind-Value="Content.Name"
+                             Style="width: 100%;"
+                             Placeholder="Category Name"/>
+        </FluentGridItem>
+        
+        <FluentGridItem xs="12" sm="12">
+            <FluentLabel>Category Description:</FluentLabel>
+            <FluentTextArea @bind-Value="Content.Description"
+                             Style="width: 100%;" Cols="8" Rows="6"
+                             Placeholder="Describe the category in brief"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="12">
+            <FluentCheckbox @bind-Value="Content.IsActive" Label="Is Active"></FluentCheckbox>
+        </FluentGridItem>
+    </FluentGrid>
+</FluentDialogBody>
+
+@code {
+    [Parameter] public UpdateCourseCategoryDto Content { get; set; } = default!;
+    [CascadingParameter] public FluentDialog? Dialog { get; set; }
+}
+

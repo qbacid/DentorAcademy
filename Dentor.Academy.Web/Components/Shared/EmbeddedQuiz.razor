@@ -1,0 +1,584 @@
+@using Dentor.Academy.Web.DTOs.Quiz
+@using Dentor.Academy.Web.Interfaces
+@using System.Security.Claims
+@inject IQuizTakingService QuizService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="embedded-quiz-container">
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3">Loading quiz...</p>
+        </div>
+    }
+    else if (_quiz != null)
+    {
+        @if (!_hasStarted)
+        {
+            <!-- Quiz Introduction -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-question-circle"></i> @_quiz.Title
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(_quiz.Description))
+                    {
+                        <p class="lead">@_quiz.Description</p>
+                        <hr />
+                    }
+
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="stat-card text-center p-3 bg-light rounded">
+                                <i class="bi bi-card-list fs-1 text-primary"></i>
+                                <h5 class="mt-2">@_quiz.TotalQuestions</h5>
+                                <p class="text-muted mb-0">Questions</p>
+                            </div>
+                        </div>
+                        @if (_quiz.TimeLimitMinutes.HasValue)
+                        {
+                            <div class="col-md-4">
+                                <div class="stat-card text-center p-3 bg-light rounded">
+                                    <i class="bi bi-clock fs-1 text-warning"></i>
+                                    <h5 class="mt-2">@_quiz.TimeLimitMinutes min</h5>
+                                    <p class="text-muted mb-0">Time Limit</p>
+                                </div>
+                            </div>
+                        }
+                        <div class="col-md-4">
+                            <div class="stat-card text-center p-3 bg-light rounded">
+                                <i class="bi bi-trophy fs-1 text-success"></i>
+                                <h5 class="mt-2">@_quiz.PassingScore%</h5>
+                                <p class="text-muted mb-0">Passing Score</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-circle"></i> @_errorMessage
+                        </div>
+                    }
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg" @onclick="StartQuiz" disabled="@_starting">
+                            @if (_starting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-play-circle"></i> Start Quiz
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (_quizAttemptId > 0 && !_isCompleted)
+        {
+            <!-- Quiz Taking Interface -->
+            <div class="quiz-taking-interface">
+                <!-- Timer (if applicable) -->
+                @if (_quiz.TimeLimitMinutes.HasValue && _timeRemaining.HasValue)
+                {
+                    <div class="alert @(_timeRemaining.Value.TotalMinutes <= 5 ? "alert-danger" : "alert-info") mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi bi-clock"></i> Time Remaining:
+                            </span>
+                            <strong>@_timeRemaining.Value.ToString(@"mm\:ss")</strong>
+                        </div>
+                    </div>
+                }
+
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Question @(_currentQuestionIndex + 1) of @_quiz.TotalQuestions</span>
+                        <span>@_answeredCount answered</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar" style="width: @((_answeredCount * 100.0 / _quiz.TotalQuestions))%"></div>
+                    </div>
+                </div>
+
+                @if (_currentQuestion != null)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <h5 class="mb-3">@_currentQuestion.QuestionText</h5>
+
+                            @if (_currentQuestion.QuestionType == "MultipleChoice" || _currentQuestion.QuestionType == "TrueFalse")
+                            {
+                                <div class="answer-options">
+                                    @foreach (var option in _currentQuestion.AnswerOptions)
+                                    {
+                                        <div class="form-check mb-3 p-3 border rounded hover-option" 
+                                             style="cursor: pointer;"
+                                             @onclick="() => SelectAnswer(option.AnswerOptionId)">
+                                            <input class="form-check-input" 
+                                                   type="radio" 
+                                                   name="answer-@_currentQuestion.QuestionId"
+                                                   id="option-@option.AnswerOptionId"
+                                                   checked="@(_selectedAnswers.Contains(option.AnswerOptionId))"
+                                                   @onclick:stopPropagation="true"
+                                                   @onchange="() => SelectAnswer(option.AnswerOptionId)"/>
+                                            <label class="form-check-label w-100" for="option-@option.AnswerOptionId" style="cursor: pointer;">
+                                                @option.OptionText
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_currentQuestion.QuestionType == "MultipleAnswer")
+                            {
+                                <div class="answer-options">
+                                    @foreach (var option in _currentQuestion.AnswerOptions)
+                                    {
+                                        <div class="form-check mb-3 p-3 border rounded hover-option" 
+                                             style="cursor: pointer;"
+                                             @onclick="() => ToggleMultipleAnswer(option.AnswerOptionId)">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="option-@option.AnswerOptionId"
+                                                   checked="@(_selectedAnswers.Contains(option.AnswerOptionId))"
+                                                   @onclick:stopPropagation="true"
+                                                   @onchange="() => ToggleMultipleAnswer(option.AnswerOptionId)"/>
+                                            <label class="form-check-label w-100" for="option-@option.AnswerOptionId" style="cursor: pointer;">
+                                                @option.OptionText
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                                <small class="text-muted">Select all that apply</small>
+                            }
+                            else if (_currentQuestion.QuestionType == "ShortAnswer")
+                            {
+                                <textarea class="form-control" 
+                                          rows="4" 
+                                          @bind="_textAnswer"
+                                          placeholder="Type your answer here..."></textarea>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-secondary" 
+                                @onclick="PreviousQuestion"
+                                disabled="@(_currentQuestionIndex == 0)">
+                            <i class="bi bi-arrow-left"></i> Previous
+                        </button>
+
+                        @if (_currentQuestionIndex < _quiz.TotalQuestions - 1)
+                        {
+                            <button class="btn btn-primary" @onclick="NextQuestion">
+                                Next <i class="bi bi-arrow-right"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-success" @onclick="ShowSubmitConfirmation">
+                                <i class="bi bi-check-circle"></i> Submit Quiz
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (_result != null)
+        {
+            <!-- Quiz Results -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header @(_result.Passed ? "bg-success" : "bg-danger") text-white">
+                    <h4 class="mb-0">
+                        <i class="bi @(_result.Passed ? "bi-check-circle" : "bi-x-circle")"></i>
+                        Quiz @(_result.Passed ? "Passed" : "Not Passed")
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row text-center mb-4">
+                        <div class="col-md-4">
+                            <div class="stat-card p-3 bg-light rounded">
+                                <h2 class="text-primary mb-0">@_result.Score.ToString("F1")%</h2>
+                                <p class="text-muted mb-0">Your Score</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card p-3 bg-light rounded">
+                                <h2 class="text-success mb-0">@_result.QuestionResults.Count(q => q.IsCorrect)</h2>
+                                <p class="text-muted mb-0">Correct Answers</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card p-3 bg-light rounded">
+                                <h2 class="text-warning mb-0">@_result.QuestionResults.Count</h2>
+                                <p class="text-muted mb-0">Total Questions</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (_result.Passed)
+                    {
+                        <div class="alert alert-success">
+                            <i class="bi bi-trophy"></i> Congratulations! You passed the quiz with a score of @_result.Score.ToString("F1")%.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-info-circle"></i> You scored @_result.Score.ToString("F1")%. You need @_quiz.PassingScore% to pass. Try again!
+                        </div>
+                    }
+
+                    <div class="d-grid gap-2">
+                        @if (!_result.Passed)
+                        {
+                            <button class="btn btn-primary" @onclick="RetakeQuiz">
+                                <i class="bi bi-arrow-clockwise"></i> Retake Quiz
+                            </button>
+                        }
+                        <button class="btn btn-outline-secondary" @onclick="OnQuizCompleted">
+                            <i class="bi bi-arrow-left"></i> Continue Course
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-circle"></i> Quiz not found or no longer available.
+        </div>
+    }
+</div>
+
+<!-- Submit Confirmation Modal -->
+@if (_showSubmitModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Submit Quiz?</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showSubmitModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You have answered @_answeredCount out of @_quiz?.TotalQuestions questions.</p>
+                    @if (_answeredCount < _quiz?.TotalQuestions)
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> You have @(_quiz.TotalQuestions - _answeredCount) unanswered question(s).
+                        </div>
+                    }
+                    <p>Are you sure you want to submit your quiz?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showSubmitModal = false">
+                        Review Answers
+                    </button>
+                    <button type="button" class="btn btn-success" @onclick="SubmitQuiz">
+                        <i class="bi bi-check-circle"></i> Submit Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .hover-option:hover {
+        background-color: #f8f9fa;
+        border-color: #0d6efd !important;
+    }
+
+    .stat-card {
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .answer-options .form-check {
+        transition: all 0.2s;
+    }
+
+    .answer-options .form-check:hover {
+        transform: translateX(5px);
+    }
+</style>
+
+@code {
+    [Parameter] public int QuizId { get; set; }
+    [Parameter] public EventCallback OnQuizCompleted { get; set; }
+
+    private QuizDisplayDto? _quiz;
+    private int _quizAttemptId;
+    private bool _loading = true;
+    private bool _hasStarted;
+    private bool _starting;
+    private bool _isCompleted;
+    private string? _errorMessage;
+    private string? _userId;
+
+    // Quiz taking state
+    private List<QuestionDisplayDto> _questions = new();
+    private int _currentQuestionIndex;
+    private QuestionDisplayDto? _currentQuestion;
+    private List<int> _selectedAnswers = new();
+    private string _textAnswer = string.Empty;
+    private Dictionary<int, QuestionAnswerDto> _answers = new();
+    private int _answeredCount;
+
+    // Timer
+    private TimeSpan? _timeRemaining;
+    private Timer? _timer;
+    private DateTime? _startTime;
+
+    // Results
+    private QuizResultDto? _result;
+    private bool _showSubmitModal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadQuiz();
+    }
+
+    private async Task LoadQuiz()
+    {
+        _loading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(_userId))
+            {
+                _quiz = await QuizService.GetQuizForTakingAsync(QuizId, _userId);
+            }
+            else
+            {
+                _quiz = await QuizService.GetQuizForDisplayAsync(QuizId);
+            }
+
+            if (_quiz == null)
+            {
+                _errorMessage = "Quiz not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading quiz: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task StartQuiz()
+    {
+        if (string.IsNullOrEmpty(_userId))
+        {
+            _errorMessage = "You must be logged in to take this quiz.";
+            return;
+        }
+
+        _starting = true;
+        try
+        {
+            var attempt = await QuizService.StartQuizAsync(QuizId, _userId);
+            if (attempt != null)
+            {
+                _quizAttemptId = attempt.Id;
+                _hasStarted = true;
+                _questions = _quiz?.Questions.ToList() ?? new();
+                _currentQuestionIndex = 0;
+                LoadCurrentQuestion();
+
+                // Start timer if applicable
+                if (_quiz?.TimeLimitMinutes.HasValue == true)
+                {
+                    _startTime = DateTime.UtcNow;
+                    _timeRemaining = TimeSpan.FromMinutes(_quiz.TimeLimitMinutes.Value);
+                    StartTimer();
+                }
+            }
+            else
+            {
+                _errorMessage = "Failed to start quiz. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error starting quiz: {ex.Message}";
+        }
+        finally
+        {
+            _starting = false;
+        }
+    }
+
+    private void LoadCurrentQuestion()
+    {
+        if (_currentQuestionIndex >= 0 && _currentQuestionIndex < _questions.Count)
+        {
+            _currentQuestion = _questions[_currentQuestionIndex];
+            
+            // Load saved answer if exists
+            if (_answers.TryGetValue(_currentQuestion.QuestionId, out var savedAnswer))
+            {
+                _selectedAnswers = savedAnswer.SelectedAnswerOptionIds.ToList();
+                _textAnswer = savedAnswer.ShortTextAnswer ?? string.Empty;
+            }
+            else
+            {
+                _selectedAnswers.Clear();
+                _textAnswer = string.Empty;
+            }
+        }
+    }
+
+    private void SelectAnswer(int answerId)
+    {
+        _selectedAnswers.Clear();
+        _selectedAnswers.Add(answerId);
+        SaveCurrentAnswer();
+    }
+
+    private void ToggleMultipleAnswer(int answerId)
+    {
+        if (_selectedAnswers.Contains(answerId))
+            _selectedAnswers.Remove(answerId);
+        else
+            _selectedAnswers.Add(answerId);
+        SaveCurrentAnswer();
+    }
+
+    private void SaveCurrentAnswer()
+    {
+        if (_currentQuestion == null) return;
+
+        var answer = new QuestionAnswerDto
+        {
+            QuestionId = _currentQuestion.QuestionId,
+            SelectedAnswerOptionIds = _selectedAnswers.ToList(),
+            ShortTextAnswer = string.IsNullOrWhiteSpace(_textAnswer) ? null : _textAnswer
+        };
+
+        _answers[_currentQuestion.QuestionId] = answer;
+        UpdateAnsweredCount();
+    }
+
+    private void UpdateAnsweredCount()
+    {
+        _answeredCount = _answers.Count(a => 
+            a.Value.SelectedAnswerOptionIds.Any() || !string.IsNullOrWhiteSpace(a.Value.ShortTextAnswer));
+    }
+
+    private void NextQuestion()
+    {
+        SaveCurrentAnswer();
+        if (_currentQuestionIndex < _questions.Count - 1)
+        {
+            _currentQuestionIndex++;
+            LoadCurrentQuestion();
+        }
+    }
+
+    private void PreviousQuestion()
+    {
+        SaveCurrentAnswer();
+        if (_currentQuestionIndex > 0)
+        {
+            _currentQuestionIndex--;
+            LoadCurrentQuestion();
+        }
+    }
+
+    private void ShowSubmitConfirmation()
+    {
+        SaveCurrentAnswer();
+        _showSubmitModal = true;
+    }
+
+    private async Task SubmitQuiz()
+    {
+        _showSubmitModal = false;
+        
+        try
+        {
+            // Save all answers
+            foreach (var answer in _answers.Values)
+            {
+                await QuizService.SaveQuestionAnswerAsync(_quizAttemptId, answer);
+            }
+
+            // Submit quiz
+            _result = await QuizService.SubmitQuizAsync(_quizAttemptId);
+            _isCompleted = true;
+            
+            StopTimer();
+
+            // Auto-continue if passed
+            if (_result.Passed)
+            {
+                await Task.Delay(3000); // Show results for 3 seconds
+                await OnQuizCompleted.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error submitting quiz: {ex.Message}";
+        }
+    }
+
+    private void RetakeQuiz()
+    {
+        _hasStarted = false;
+        _isCompleted = false;
+        _result = null;
+        _answers.Clear();
+        _currentQuestionIndex = 0;
+        _answeredCount = 0;
+        _selectedAnswers.Clear();
+        _textAnswer = string.Empty;
+    }
+
+    private void StartTimer()
+    {
+        _timer = new Timer(_ =>
+        {
+            if (_startTime.HasValue && _quiz?.TimeLimitMinutes.HasValue == true)
+            {
+                var elapsed = DateTime.UtcNow - _startTime.Value;
+                var totalTime = TimeSpan.FromMinutes(_quiz.TimeLimitMinutes.Value);
+                _timeRemaining = totalTime - elapsed;
+
+                if (_timeRemaining.Value.TotalSeconds <= 0)
+                {
+                    _ = InvokeAsync(async () => await SubmitQuiz());
+                }
+                else
+                {
+                    _ = InvokeAsync(StateHasChanged);
+                }
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private void StopTimer()
+    {
+        _timer?.Dispose();
+        _timer = null;
+    }
+
+    public void Dispose()
+    {
+        StopTimer();
+    }
+}

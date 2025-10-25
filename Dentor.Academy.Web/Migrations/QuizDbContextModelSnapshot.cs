@@ -1086,6 +1086,16 @@ namespace Dentor.Academy.Web.Migrations
                         .HasColumnType("numeric(5,2)")
                         .HasColumnName("points");
 
+                    b.Property<string>("QuestionAudioUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("question_audio_url");
+
+                    b.Property<string>("QuestionImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("question_image_url");
+
                     b.Property<string>("QuestionText")
                         .IsRequired()
                         .HasMaxLength(1000)

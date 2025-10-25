@@ -13,6 +13,9 @@
         <NavLink href="" Match="NavLinkMatch.All">
             <i class="bi bi-house-door"></i> Home
         </NavLink>
+        <NavLink href="courses">
+            <i class="bi bi-journal-text"></i> Courses
+        </NavLink>
         <NavLink href="quizzes">
             <i class="bi bi-list-check"></i> Quizzes
         </NavLink>
@@ -26,7 +29,10 @@
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <NavLink href="admin/courses">
-                    <i class="bi bi-journal-text"></i> Course Management
+                    <i class="bi bi-gear"></i> Course Management
+                </NavLink>
+                <NavLink href="admin/quizzes">
+                    <i class="bi bi-question-circle"></i> Quiz Management
                 </NavLink>
                 <NavLink href="quiz-import">
                     <i class="bi bi-upload"></i> Import Quiz

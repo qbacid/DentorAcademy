@@ -1,0 +1,14 @@
+@* Reusable Loading Spinner Component *@
+
+<FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalGap="16" Style="padding: 40px 20px;">
+    <FluentProgressRing />
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">@Message</FluentLabel>
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Loading...";
+}

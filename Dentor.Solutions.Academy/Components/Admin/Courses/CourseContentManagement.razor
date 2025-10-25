@@ -1,0 +1,774 @@
+@page "/instructor/course/{CourseId:int}/content"
+
+@using System.Linq
+@using Dentor.Academy.WebApp.DTOs.Quiz
+@using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Interfaces
+
+@inject ICourseContentService ContentService
+@inject IQuizTakingService QuizTakingService
+@inject ICourseManagementService CourseService
+
+@inject IJSRuntime JsRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Course Content - @(_courseName ?? "Loading...")</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/instructor/courses">My Courses</a></li>
+                    <li class="breadcrumb-item"><a href="/instructor/course/@CourseId">@_courseName</a></li>
+                    <li class="breadcrumb-item active">Course Content</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Course Curriculum</h2>
+            <p class="text-muted">Build your course by adding modules (sections) and content items (lectures, videos, quizzes)</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" @onclick="ShowAddModuleModal">
+                <i class="bi bi-plus-circle"></i> Add Module
+            </button>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading course content...</p>
+        </div>
+    }
+    else if (_modules.Any())
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <!-- Course Stats -->
+                <div class="card mb-4 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <h4 class="text-primary mb-0">@_modules.Count</h4>
+                                <small class="text-muted">Modules</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h4 class="text-primary mb-0">@_modules.Sum(m => m.Contents.Count)</h4>
+                                <small class="text-muted">Lectures</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h4 class="text-primary mb-0">@FormatDuration(_modules.Sum(m => m.EstimatedDurationMinutes ?? 0))</h4>
+                                <small class="text-muted">Total Duration</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h4 class="text-primary mb-0">@_modules.Count(m => m.IsPublished)</h4>
+                                <small class="text-muted">Published</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modules List -->
+                <div class="curriculum-container">
+                    @foreach (var module in _modules.OrderBy(m => m.OrderIndex))
+                    {
+                        <div class="card module-card mb-3 border-0 shadow-sm" data-module-id="@module.Id">
+                            <div class="card-header bg-light border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <i class="bi bi-grip-vertical text-muted me-2" style="cursor: move;"></i>
+                                        <div class="flex-grow-1">
+                                            <h5 class="mb-0">
+                                                <span class="badge bg-secondary me-2">Module @(module.OrderIndex + 1)</span>
+                                                @module.Title
+                                            </h5>
+                                            @if (!string.IsNullOrEmpty(module.Description))
+                                            {
+                                                <small class="text-muted">@module.Description</small>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-info">
+                                            @module.Contents.Count lecture@(module.Contents.Count != 1 ? "s" : "")
+                                        </span>
+                                        @if (module.EstimatedDurationMinutes.HasValue)
+                                        {
+                                            <span class="badge bg-secondary">@FormatDuration(module.EstimatedDurationMinutes.Value)</span>
+                                        }
+                                        @if (!module.IsPublished)
+                                        {
+                                            <span class="badge bg-warning">Draft</span>
+                                        }
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ToggleModuleExpanded(module.Id)">
+                                            <i class="bi @(_expandedModules.Contains(module.Id) ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => ShowEditModuleModal(module)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteModule(module.Id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (_expandedModules.Contains(module.Id))
+                            {
+                                <div class="card-body">
+                                    <!-- Content Items -->
+                                    @if (module.Contents.Any())
+                                    {
+                                        <div class="list-group list-group-flush">
+                                            @foreach (var content in module.Contents.OrderBy(c => c.OrderIndex))
+                                            {
+                                                <div class="list-group-item d-flex justify-content-between align-items-center content-item" data-content-id="@content.Id">
+                                                    <div class="d-flex align-items-center flex-grow-1">
+                                                        <i class="bi bi-grip-vertical text-muted me-2" style="cursor: move;"></i>
+                                                        <i class="bi @GetContentIcon(content.ContentType) me-2 text-primary"></i>
+                                                        <div class="flex-grow-1">
+                                                            <strong>@content.Title</strong>
+                                                            @if (!string.IsNullOrEmpty(content.Description))
+                                                            {
+                                                                <br />
+                                                                <small class="text-muted">@content.Description</small>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        @if (content.IsFreePreview)
+                                                        {
+                                                            <span class="badge bg-success">Preview</span>
+                                                        }
+                                                        @if (content.IsMandatory)
+                                                        {
+                                                            <span class="badge bg-warning">Required</span>
+                                                        }
+                                                        @if (content.DurationMinutes.HasValue)
+                                                        {
+                                                            <span class="badge bg-secondary">@content.DurationMinutes min</span>
+                                                        }
+                                                        <span class="badge bg-light text-dark">@content.ContentType</span>
+                                                        @if (!content.IsPublished)
+                                                        {
+                                                            <span class="badge bg-warning">Draft</span>
+                                                        }
+                                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEditContentModal(content)">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteContent(content.Id)">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-light text-center py-4">
+                                            <i class="bi bi-inbox fs-1 text-muted"></i>
+                                            <p class="mb-0">No content items yet</p>
+                                        </div>
+                                    }
+
+                                    <!-- Add Content Button -->
+                                    <div class="mt-3">
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ShowAddContentModal(module.Id)">
+                                            <i class="bi bi-plus-circle"></i> Add Lecture
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-collection fs-1 text-muted"></i>
+            <h4 class="mt-3">No modules yet</h4>
+            <p class="text-muted">Start building your course by adding your first module</p>
+            <button class="btn btn-primary" @onclick="ShowAddModuleModal">
+                <i class="bi bi-plus-circle"></i> Add First Module
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Add/Edit Module Modal -->
+@if (_showModuleModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingModule == null ? "Add New Module" : "Edit Module")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModuleModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Module Title *</label>
+                        <input type="text" class="form-control" @bind="_moduleForm.Title" placeholder="e.g., Introduction to the Course" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" rows="3" @bind="_moduleForm.Description" placeholder="Brief description of what this module covers"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Estimated Duration (minutes)</label>
+                        <input type="number" class="form-control" @bind="_moduleForm.EstimatedDurationMinutes" placeholder="Optional" />
+                    </div>
+                    @if (_editingModule != null)
+                    {
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="_moduleForm.IsPublished" id="modulePublished" />
+                                <label class="form-check-label" for="modulePublished">Published</label>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModuleModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveModule" disabled="@_isSaving">
+                        @if (_isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Save Module
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add/Edit Content Modal -->
+@if (_showContentModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingContent == null ? "Add New Content" : "Edit Content")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseContentModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">Content Title *</label>
+                                <input type="text" class="form-control" @bind="_contentForm.Title" placeholder="e.g., Welcome Video" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" rows="3" @bind="_contentForm.Description" placeholder="Brief description of this content"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Content Type *</label>
+                                <select class="form-select" @bind="_contentForm.ContentType">
+                                    <option value="">Select type...</option>
+                                    <option value="Video">Video</option>
+                                    <option value="Document">Document</option>
+                                    <option value="PDF">PDF</option>
+                                    <option value="Audio">Audio</option>
+                                    <option value="Quiz">Quiz</option>
+                                    <option value="ExternalLink">External Link</option>
+                                </select>
+                            </div>
+
+                            @if (_contentForm.ContentType == "ExternalLink")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">External URL *</label>
+                                    <input type="url" class="form-control" @bind="_contentForm.ExternalUrl" placeholder="https://" />
+                                    <small class="text-muted">YouTube, Vimeo, or any external resource URL</small>
+                                </div>
+                            }
+
+                            @if (_contentForm.ContentType == "Quiz")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Select Quiz *</label>
+                                    <select class="form-select" @bind="_contentForm.QuizId">
+                                        <option value="">Select a quiz...</option>
+                                        @foreach (var quiz in _availableQuizzes)
+                                        {
+                                            <option value="@quiz.Id">@quiz.Title</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+
+                            <div class="mb-3">
+                                <label class="form-label">Duration (minutes)</label>
+                                <input type="number" class="form-control" @bind="_contentForm.DurationMinutes" placeholder="Optional" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Content Settings</h6>
+                                    
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" @bind="_contentForm.IsFreePreview" id="freePreview" />
+                                        <label class="form-check-label" for="freePreview">
+                                            Free Preview
+                                            <br /><small class="text-muted">Allow non-enrolled users to view</small>
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" @bind="_contentForm.IsDownloadable" id="downloadable" />
+                                        <label class="form-check-label" for="downloadable">
+                                            Downloadable
+                                            <br /><small class="text-muted">Students can download this content</small>
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" @bind="_contentForm.IsMandatory" id="mandatory" />
+                                        <label class="form-check-label" for="mandatory">
+                                            Required
+                                            <br /><small class="text-muted">Must be completed to progress</small>
+                                        </label>
+                                    </div>
+
+                                    @if (_editingContent != null)
+                                    {
+                                        <div class="form-check form-switch mb-2">
+                                            <input class="form-check-input" type="checkbox" @bind="_contentForm.IsPublished" id="contentPublished" />
+                                            <label class="form-check-label" for="contentPublished">
+                                                Published
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(_contentForm.ContentType) && 
+                                 _contentForm.ContentType != "Quiz" && 
+                                 _contentForm.ContentType != "ExternalLink")
+                            {
+                                <div class="card bg-light mt-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Upload File</h6>
+                                        <p class="small text-muted">Max file size: 500MB</p>
+                                        <InputFile OnChange="HandleFileSelected" class="form-control" />
+                                        @if (_uploadProgress > 0 && _uploadProgress < 100)
+                                        {
+                                            <div class="progress mt-2">
+                                                <div class="progress-bar" style="width: @_uploadProgress%">@_uploadProgress%</div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseContentModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveContent" disabled="@_isSaving">
+                        @if (_isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Save Content
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .module-card {
+        transition: all 0.3s ease;
+    }
+
+    .module-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .content-item {
+        border-left: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .content-item:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    .curriculum-container {
+        min-height: 200px;
+    }
+</style>
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+
+    private string? _courseName;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private List<CourseModuleDto> _modules = new();
+    private HashSet<int> _expandedModules = new();
+    private List<QuizCardDto> _availableQuizzes = new();
+
+    // Module modal
+    private bool _showModuleModal;
+    private CourseModuleDto? _editingModule;
+    private ModuleFormModel _moduleForm = new();
+
+    // Content modal
+    private bool _showContentModal;
+    private CourseContentDto? _editingContent;
+    private ContentFormModel _contentForm = new();
+    private int _uploadProgress;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCourseData();
+    }
+
+    private async Task LoadCourseData()
+    {
+        _isLoading = true;
+        try
+        {
+            var course = await CourseService.GetCourseByIdAsync(CourseId);
+            if (course != null)
+            {
+                _courseName = course.Title;
+            }
+
+            _modules = await ContentService.GetCourseModulesAsync(CourseId);
+            
+            // Load available quizzes
+            _availableQuizzes = await QuizTakingService.GetAvailableQuizzesAsync();
+            
+            // Auto-expand all modules initially
+            _expandedModules = _modules
+                .Select(m => m.Id)
+                .ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading course: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleModuleExpanded(int moduleId)
+    {
+        if (_expandedModules.Contains(moduleId))
+            _expandedModules.Remove(moduleId);
+        else
+            _expandedModules.Add(moduleId);
+    }
+
+    #region Module Management
+
+    private void ShowAddModuleModal()
+    {
+        _editingModule = null;
+        _moduleForm = new ModuleFormModel
+        {
+            OrderIndex = _modules.Count
+        };
+        _showModuleModal = true;
+    }
+
+    private void ShowEditModuleModal(CourseModuleDto module)
+    {
+        _editingModule = module;
+        _moduleForm = new ModuleFormModel
+        {
+            Title = module.Title,
+            Description = module.Description,
+            EstimatedDurationMinutes = module.EstimatedDurationMinutes,
+            OrderIndex = module.OrderIndex,
+            IsPublished = module.IsPublished
+        };
+        _showModuleModal = true;
+    }
+
+    private void CloseModuleModal()
+    {
+        _showModuleModal = false;
+        _editingModule = null;
+        _moduleForm = new();
+    }
+
+    private async Task SaveModule()
+    {
+        if (string.IsNullOrWhiteSpace(_moduleForm.Title))
+            return;
+
+        _isSaving = true;
+        try
+        {
+            if (_editingModule == null)
+            {
+                // Create new module
+                var createDto = new CreateCourseModuleDto
+                {
+                    CourseId = CourseId,
+                    Title = _moduleForm.Title,
+                    Description = _moduleForm.Description,
+                    OrderIndex = _moduleForm.OrderIndex,
+                    EstimatedDurationMinutes = _moduleForm.EstimatedDurationMinutes
+                };
+                await ContentService.CreateModuleAsync(createDto);
+            }
+            else
+            {
+                // Update existing module
+                var updateDto = new UpdateCourseModuleDto
+                {
+                    Title = _moduleForm.Title,
+                    Description = _moduleForm.Description,
+                    OrderIndex = _moduleForm.OrderIndex,
+                    EstimatedDurationMinutes = _moduleForm.EstimatedDurationMinutes,
+                    IsPublished = _moduleForm.IsPublished
+                };
+                await ContentService.UpdateModuleAsync(_editingModule.Id, updateDto);
+            }
+
+            await LoadCourseData();
+            CloseModuleModal();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving module: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteModule(int moduleId)
+    {
+        if (!await JsRuntime.InvokeAsync<bool>("confirm", new object[] { "Are you sure you want to delete this module and all its content?" }))
+            return;
+
+        try
+        {
+            await ContentService.DeleteModuleAsync(moduleId);
+            await LoadCourseData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting module: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Content Management
+
+    private void ShowAddContentModal(int moduleId)
+    {
+        _editingContent = null;
+        _contentForm = new ContentFormModel
+        {
+            CourseModuleId = moduleId,
+            OrderIndex = _modules.First(m => m.Id == moduleId).Contents.Count
+        };
+        _showContentModal = true;
+    }
+
+    private void ShowEditContentModal(CourseContentDto content)
+    {
+        _editingContent = content;
+        _contentForm = new ContentFormModel
+        {
+            CourseModuleId = content.CourseModuleId,
+            Title = content.Title,
+            Description = content.Description,
+            ContentType = content.ContentType,
+            OrderIndex = content.OrderIndex,
+            DurationMinutes = content.DurationMinutes,
+            ExternalUrl = content.ExternalUrl,
+            QuizId = content.QuizId,
+            IsFreePreview = content.IsFreePreview,
+            IsDownloadable = content.IsDownloadable,
+            IsMandatory = content.IsMandatory,
+            IsPublished = content.IsPublished
+        };
+        _showContentModal = true;
+    }
+
+    private void CloseContentModal()
+    {
+        _showContentModal = false;
+        _editingContent = null;
+        _contentForm = new();
+        _uploadProgress = 0;
+    }
+
+    private async Task SaveContent()
+    {
+        if (string.IsNullOrWhiteSpace(_contentForm.Title) || string.IsNullOrWhiteSpace(_contentForm.ContentType))
+            return;
+
+        _isSaving = true;
+        try
+        {
+            if (_editingContent == null)
+            {
+                // Create new content
+                var createDto = new CreateCourseContentDto
+                {
+                    CourseModuleId = _contentForm.CourseModuleId,
+                    Title = _contentForm.Title,
+                    Description = _contentForm.Description,
+                    ContentType = _contentForm.ContentType,
+                    OrderIndex = _contentForm.OrderIndex,
+                    DurationMinutes = _contentForm.DurationMinutes,
+                    ExternalUrl = _contentForm.ExternalUrl,
+                    QuizId = _contentForm.QuizId,
+                    IsFreePreview = _contentForm.IsFreePreview,
+                    IsDownloadable = _contentForm.IsDownloadable,
+                    IsMandatory = _contentForm.IsMandatory
+                };
+                await ContentService.CreateContentAsync(createDto);
+            }
+            else
+            {
+                // Update existing content
+                var updateDto = new UpdateCourseContentDto
+                {
+                    Title = _contentForm.Title,
+                    Description = _contentForm.Description,
+                    OrderIndex = _contentForm.OrderIndex,
+                    DurationMinutes = _contentForm.DurationMinutes,
+                    ExternalUrl = _contentForm.ExternalUrl,
+                    QuizId = _contentForm.QuizId,
+                    IsFreePreview = _contentForm.IsFreePreview,
+                    IsDownloadable = _contentForm.IsDownloadable,
+                    IsMandatory = _contentForm.IsMandatory,
+                    IsPublished = _contentForm.IsPublished
+                };
+                await ContentService.UpdateContentAsync(_editingContent.Id, updateDto);
+            }
+
+            await LoadCourseData();
+            CloseContentModal();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving content: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteContent(int contentId)
+    {
+        if (!await JsRuntime.InvokeAsync<bool>("confirm", new object[] { "Are you sure you want to delete this content?" }))
+            return;
+
+        try
+        {
+            await ContentService.DeleteContentAsync(contentId);
+            await LoadCourseData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting content: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        // TODO: Implement file upload with progress tracking
+        _uploadProgress = 0;
+        // Simulate upload progress
+        for (int i = 0; i <= 100; i += 10)
+        {
+            _uploadProgress = i;
+            await Task.Delay(200);
+            StateHasChanged();
+        }
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private string GetContentIcon(string contentType)
+    {
+        return contentType switch
+        {
+            "Video" => "bi-play-circle",
+            "Document" => "bi-file-earmark-text",
+            "PDF" => "bi-file-earmark-pdf",
+            "Audio" => "bi-music-note",
+            "Quiz" => "bi-question-circle",
+            "ExternalLink" => "bi-link-45deg",
+            _ => "bi-file-earmark"
+        };
+    }
+
+    private string FormatDuration(int minutes)
+    {
+        if (minutes < 60)
+            return $"{minutes}m";
+        
+        var hours = minutes / 60;
+        var mins = minutes % 60;
+        return mins > 0 ? $"{hours}h {mins}m" : $"{hours}h";
+    }
+
+    #endregion
+
+    #region Form Models
+
+    private class ModuleFormModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int OrderIndex { get; set; }
+        public int? EstimatedDurationMinutes { get; set; }
+        public bool IsPublished { get; set; } = true;
+    }
+
+    private class ContentFormModel
+    {
+        public int CourseModuleId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string ContentType { get; set; } = string.Empty;
+        public int OrderIndex { get; set; }
+        public int? DurationMinutes { get; set; }
+        public string? ExternalUrl { get; set; }
+        public int? QuizId { get; set; }
+        public bool IsFreePreview { get; set; }
+        public bool IsDownloadable { get; set; }
+        public bool IsMandatory { get; set; }
+        public bool IsPublished { get; set; } = true;
+    }
+
+    #endregion
+}

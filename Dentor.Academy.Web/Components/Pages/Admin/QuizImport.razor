@@ -1,0 +1,194 @@
+@page "/quiz-import"
+
+@attribute [Authorize(Roles = "Admin")]
+
+@using Dentor.Academy.Web.DTOs.Quiz
+
+@using Dentor.Academy.Web.Interfaces
+
+@inject IQuizImportService ImportService
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<PageTitle>Import Quiz</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Import Quiz</h2>
+            <p class="text-muted">Upload quiz data from JSON files</p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Upload JSON File</h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Select JSON File</label>
+                        <InputFile OnChange="HandleJsonFileSelected" class="form-control" accept=".json" />
+                        <div class="form-text">
+                            Upload a JSON file with quiz structure. 
+                            <a href="/sample-quiz.json" download>Download sample template</a>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(jsonContent))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">JSON Preview</label>
+                            <textarea class="form-control font-monospace" rows="10" readonly>@jsonContent</textarea>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button class="btn btn-primary" @onclick="ImportQuiz" disabled="@(isImporting || jsonFile == null)">
+                            @if (isImporting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Importing...</span>
+                            }
+                            else
+                            {
+                                <span>Import Quiz</span>
+                            }
+                        </button>
+                        <button class="btn btn-secondary" @onclick="ClearForm" disabled="@isImporting">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @if (importResult != null)
+            {
+                <div class="alert @(importResult.Success ? "alert-success" : "alert-danger") mt-3" role="alert">
+                    <h5 class="alert-heading">@(importResult.Success ? "Success!" : "Import Failed")</h5>
+                    <p>@importResult.Message</p>
+
+                    @if (importResult.Success)
+                    {
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Questions Imported:</strong> @importResult.QuestionsImported
+                            <br />
+                            <a href="/quiz/@importResult.QuizId" class="alert-link">View Quiz</a>
+                        </p>
+                    }
+
+                    @if (importResult.Errors.Any())
+                    {
+                        <hr>
+                        <strong>Errors:</strong>
+                        <ul>
+                            @foreach (var error in importResult.Errors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    }
+
+                    @if (importResult.Warnings.Any())
+                    {
+                        <hr>
+                        <strong>Warnings:</strong>
+                        <ul>
+                            @foreach (var warning in importResult.Warnings)
+                            {
+                                <li>@warning</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Format Guide</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Question Types:</h6>
+                    <ul>
+                        <li><strong>MultipleChoice</strong>: Single correct answer</li>
+                        <li><strong>MultipleCheckbox</strong>: Multiple correct answers</li>
+                        <li><strong>TrueFalse</strong>: True or False question</li>
+                        <li><strong>ShortAnswer</strong>: User provides a short text response (no options)</li>
+                    </ul>
+
+                    <h6 class="mt-3">Tips:</h6>
+                    <ul class="small">
+                        <li>For MultipleChoice, MultipleCheckbox, and TrueFalse, ensure at least one answer is marked as correct</li>
+                        <li>ShortAnswer questions do not require answer options</li>
+                        <li>For True/False questions, provide exactly 2 options</li>
+                        <li>Display order determines question sequence</li>
+                        <li>Points are decimal values (e.g., 1.0, 2.5)</li>
+                    </ul>
+
+                    <h6 class="mt-3">Sample File:</h6>
+                    <div class="d-grid">
+                        <a href="/sample-quiz.json" download class="btn btn-sm btn-outline-primary">
+                            📄 Download JSON Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isImporting = false;
+    private ImportResult? importResult = null;
+    private string jsonContent = string.Empty;
+    private IBrowserFile? jsonFile = null;
+
+    private void HandleJsonFileSelected(InputFileChangeEventArgs e)
+    {
+        jsonFile = e.File;
+        importResult = null;
+    }
+
+    private async Task ImportQuiz()
+    {
+        if (jsonFile == null) return;
+
+        isImporting = true;
+        importResult = null;
+
+        try
+        {
+            using var stream = jsonFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB
+            using var reader = new StreamReader(stream);
+            jsonContent = await reader.ReadToEndAsync();
+            
+            importResult = await ImportService.ImportFromJsonAsync(jsonContent);
+        }
+        catch (Exception ex)
+        {
+            importResult = new ImportResult
+            {
+                Success = false,
+                Message = "An error occurred during import",
+                Errors = new List<string> { ex.Message }
+            };
+        }
+        finally
+        {
+            isImporting = false;
+        }
+    }
+
+    private void ClearForm()
+    {
+        jsonFile = null;
+        jsonContent = string.Empty;
+        importResult = null;
+    }
+}

@@ -1,0 +1,144 @@
+@* Reusable Empty State Component *@
+
+<FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 40px 20px; max-width: 600px; margin: 0 auto;">
+    <FluentCard Style="width: 100%; box-shadow: var(--elevation-shadow-card-rest);">
+        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalGap="24" Style="padding: 60px 40px; text-align: center;">
+            
+            @if (Icon != null)
+            {
+                <FluentIcon Value="@Icon" Color="Color.Custom" CustomColor="#dee2e6" Style="font-size: 4rem;" />
+            }
+            
+            <FluentLabel Typo="Typography.H4" Style="font-weight: 600;">@Title</FluentLabel>
+            
+            <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint); max-width: 400px;">@Message</FluentLabel>
+            
+            @if (ShowAction)
+            {
+                @if (string.IsNullOrWhiteSpace(RequiredRole))
+                {
+                    @if (!string.IsNullOrWhiteSpace(ActionUrl))
+                    {
+                        <FluentButton Appearance="Appearance.Accent" 
+                                    OnClick="@(() => NavigateToUrl(ActionUrl))"
+                                    Style="margin-top: 8px;">
+                            @if (ActionIcon != null)
+                            {
+                                <FluentIcon Value="@ActionIcon" Slot="start" />
+                            }
+                            @ActionText
+                        </FluentButton>
+                    }
+                    else if (OnAction.HasDelegate)
+                    {
+                        <FluentButton Appearance="Appearance.Accent" 
+                                    OnClick="OnAction"
+                                    Style="margin-top: 8px;">
+                            @if (ActionIcon != null)
+                            {
+                                <FluentIcon Value="@ActionIcon" Slot="start" />
+                            }
+                            @ActionText
+                        </FluentButton>
+                    }
+                }
+                else
+                {
+                    <AuthorizeView Roles="@RequiredRole">
+                        <Authorized>
+                            @if (!string.IsNullOrWhiteSpace(ActionUrl))
+                            {
+                                <FluentButton Appearance="Appearance.Accent" 
+                                            OnClick="@(() => NavigateToUrl(ActionUrl))"
+                                            Style="margin-top: 8px;">
+                                    @if (ActionIcon != null)
+                                    {
+                                        <FluentIcon Value="@ActionIcon" Slot="start" />
+                                    }
+                                    @ActionText
+                                </FluentButton>
+                            }
+                            else if (OnAction.HasDelegate)
+                            {
+                                <FluentButton Appearance="Appearance.Accent" 
+                                            OnClick="OnAction"
+                                            Style="margin-top: 8px;">
+                                    @if (ActionIcon != null)
+                                    {
+                                        <FluentIcon Value="@ActionIcon" Slot="start" />
+                                    }
+                                    @ActionText
+                                </FluentButton>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            @if (ShowActionForUnauthorized && !string.IsNullOrWhiteSpace(ActionUrl))
+                            {
+                                <FluentButton Appearance="Appearance.Accent" 
+                                            OnClick="@(() => NavigateToUrl(ActionUrl))"
+                                            Style="margin-top: 8px;">
+                                    @if (ActionIcon != null)
+                                    {
+                                        <FluentIcon Value="@ActionIcon" Slot="start" />
+                                    }
+                                    @ActionText
+                                </FluentButton>
+                            }
+                        </NotAuthorized>
+                    </AuthorizeView>
+                }
+            }
+        </FluentStack>
+    </FluentCard>
+</FluentStack>
+
+@code {
+    [Inject] private NavigationManager? NavigationManager { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "No Items Available";
+
+    [Parameter]
+    public string Message { get; set; } = "There are no items to display at this time.";
+
+    [Parameter]
+    public Icon? Icon { get; set; }
+
+    [Parameter]
+    public bool ShowAction { get; set; } = false;
+
+    [Parameter]
+    public string ActionText { get; set; } = "Take Action";
+
+    [Parameter]
+    public Icon? ActionIcon { get; set; }
+
+    [Parameter]
+    public string? ActionUrl { get; set; }
+
+    [Parameter]
+    public EventCallback OnAction { get; set; }
+
+    /// <summary>
+    /// Optional: Role required to see the action button. 
+    /// If empty/null, the action is visible to all users (no authentication required).
+    /// Example: "Admin" or "Admin,Manager" for multiple roles
+    /// </summary>
+    [Parameter]
+    public string? RequiredRole { get; set; }
+
+    /// <summary>
+    /// If true, shows the action button to unauthorized users when a RequiredRole is specified.
+    /// Useful for showing "Sign in to continue" type actions.
+    /// </summary>
+    [Parameter]
+    public bool ShowActionForUnauthorized { get; set; } = false;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private void NavigateToUrl(string url)
+    {
+        NavigationManager?.NavigateTo(url);
+    }
+}

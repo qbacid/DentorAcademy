@@ -6,31 +6,46 @@
     @foreach (var quiz in Quizzes)
     {
         <div class="col-sm-6 col-lg-4">
-            <div class="quiz-list-card" role="button" tabindex="0"
+            <div class="card border-0 shadow-sm h-100 quiz-card" 
+                 role="button" 
+                 tabindex="0"
                  @onclick="() => OnQuizSelected.InvokeAsync(quiz.Id)"
                  @onkeydown="(e) => CardKeyDown(e, quiz.Id)">
-                <div class="qlc-header" title="@quiz.Category">@(quiz.Category ?? @quiz.Title)</div>
-                <div class="qlc-body">
-                    <h6 class="qlc-title">@quiz.Title</h6>
+                
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-2">
+                        <span class="badge bg-primary-subtle text-primary">
+                            <i class="bi bi-folder me-1"></i>@(quiz.Category ?? "General")
+                        </span>
+                    </div>
+                    
+                    <h5 class="card-title quiz-title mb-2">@quiz.Title</h5>
+                    
                     @if (!string.IsNullOrWhiteSpace(quiz.Description))
                     {
-                        <p class="qlc-desc">@quiz.Description</p>
+                        <p class="card-text quiz-description text-muted mb-3">@quiz.Description</p>
                     }
                     else
                     {
-                        <p class="qlc-desc qlc-desc-empty fst-italic text-muted">No description provided.</p>
+                        <p class="card-text quiz-description text-muted fst-italic mb-3">No description provided.</p>
                     }
-                    <div class="qlc-meta text-muted">
-                        <span>@quiz.QuestionCount question@(quiz.QuestionCount == 1 ? "" : "s")</span>
-                        @if (quiz.TimeLimitMinutes.HasValue)
-                        {
-                            <span>&bull; @quiz.TimeLimitMinutes min</span>
-                        }
-                        <span>&bull; Pass @quiz.PassingScore%</span>
+                    
+                    <div class="quiz-meta text-muted small mb-3 pb-3 border-top pt-3">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span><i class="bi bi-question-circle me-1"></i> @quiz.QuestionCount question@(quiz.QuestionCount == 1 ? "" : "s")</span>
+                            @if (quiz.TimeLimitMinutes.HasValue)
+                            {
+                                <span><i class="bi bi-clock me-1"></i> @quiz.TimeLimitMinutes min</span>
+                            }
+                            <span><i class="bi bi-trophy me-1"></i> Pass @quiz.PassingScore%</span>
+                        </div>
                     </div>
-                </div>
-                <div class="qlc-footer">
-                    <span class="qlc-action text-primary">Start &rsaquo;</span>
+                    
+                    <div class="mt-auto">
+                        <button class="btn btn-primary w-100" @onclick="() => OnQuizSelected.InvokeAsync(quiz.Id)">
+                            <i class="bi bi-play-circle me-1"></i> Start Quiz
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -55,4 +70,3 @@
         }
     }
 }
-

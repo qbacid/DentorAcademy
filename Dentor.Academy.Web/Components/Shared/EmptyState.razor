@@ -17,7 +17,6 @@
                 {
                     @if (string.IsNullOrWhiteSpace(RequiredRole))
                     {
-                        <!-- No authentication required - show action to everyone -->
                         @if (!string.IsNullOrWhiteSpace(ActionUrl))
                         {
                             <a href="@ActionUrl" class="btn btn-primary btn-lg">
@@ -41,7 +40,6 @@
                     }
                     else
                     {
-                        <!-- Authentication required - use AuthorizeView with role -->
                         <AuthorizeView Roles="@RequiredRole">
                             <Authorized>
                                 @if (!string.IsNullOrWhiteSpace(ActionUrl))

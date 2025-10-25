@@ -1,0 +1,226 @@
+@using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Models
+@implements IDialogContentComponent<CourseDto>
+
+<FluentDialogHeader>
+    <FluentLabel Typo="Typography.PaneHeader">
+        @(Content.Id == 0 ? "Create New Course" : "Edit Course")
+    </FluentLabel>
+    <FluentDivider Orientation="Orientation.Horizontal"/>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentGrid Spacing="3" AdaptiveRendering="true" Justify="JustifyContent.FlexStart">
+        
+        <!-- Basic Information Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Basic Information</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="8">
+            <FluentLabel>Course Title *</FluentLabel>
+            <FluentTextField @bind-Value="Content.Title"
+                            Style="width: 100%;"
+                            Placeholder="Enter course title"
+                            Required="true"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="4">
+            <FluentLabel>Category *</FluentLabel>
+            <FluentSelect @bind-SelectedOption="_selectedCategory"
+                         Style="width: 100%;"
+                         TOption="CourseCategoryDto"
+                         Items="@Categories"
+                         OptionValue="@(c => c.Id.ToString())"
+                         OptionText="@(c => c.Name)"
+                         @bind-SelectedOption:after="OnCategorySelected"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentLabel>Short Description</FluentLabel>
+            <FluentTextField @bind-Value="Content.ShortDescription"
+                            Style="width: 100%;"
+                            Maxlength="500"
+                            Placeholder="Brief description (shown in course list)"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentLabel>Full Description</FluentLabel>
+            <FluentTextArea @bind-Value="Content.FullDescription"
+                           Style="width: 100%;"
+                           Rows="5"
+                           Placeholder="Detailed course description"/>
+        </FluentGridItem>
+
+        <!-- Course Details Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Course Details</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="4">
+            <FluentLabel>Difficulty Level</FluentLabel>
+            <FluentSelect @bind-Value="_selectedDifficultyLevel"
+                         @bind-Value:after="OnDifficultyLevelChanged"
+                         Style="width: 100%;"
+                         TOption="string">
+                <FluentOption Value="Beginner">Beginner</FluentOption>
+                <FluentOption Value="Intermediate">Intermediate</FluentOption>
+                <FluentOption Value="Advanced">Advanced</FluentOption>
+            </FluentSelect>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="4">
+            <FluentLabel>Estimated Duration (hours)</FluentLabel>
+            <FluentNumberField @bind-Value="Content.EstimatedDurationHours"
+                              Style="width: 100%;"
+                              Min="0"
+                              Step="0.5"
+                              Placeholder="0.0"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="4">
+            <FluentLabel>Price ($)</FluentLabel>
+            <FluentNumberField @bind-Value="Content.Price"
+                              Style="width: 100%;"
+                              Min="0"
+                              Step="0.01"
+                              Placeholder="0.00 for free"/>
+        </FluentGridItem>
+
+        <!-- Image Uploads Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Course Images</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+            <FluentLabel Typo="Typography.Body" Style="color: #666;">
+                Upload images for your course. Recommended: Thumbnail (400x300px), Cover (1200x600px)
+            </FluentLabel>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6">
+            <FluentLabel>Thumbnail Image</FluentLabel>
+            <InputFile accept="image/*" OnChange="@HandleThumbnailUpload" style="width: 100%;"/>
+            @if (!string.IsNullOrEmpty(ThumbnailPreview))
+            {
+                <FluentStack Orientation="Orientation.Vertical" Style="margin-top: 8px;">
+                    <img src="@ThumbnailPreview" alt="Thumbnail preview" style="max-width: 200px; max-height: 150px; border-radius: 4px; border: 1px solid #e0e0e0;"/>
+                </FluentStack>
+            }
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6">
+            <FluentLabel>Cover Image</FluentLabel>
+            <InputFile accept="image/*" OnChange="@HandleCoverImageUpload" style="width: 100%;"/>
+            @if (!string.IsNullOrEmpty(CoverImagePreview))
+            {
+                <FluentStack Orientation="Orientation.Vertical" Style="margin-top: 8px;">
+                    <img src="@CoverImagePreview" alt="Cover preview" style="max-width: 200px; max-height: 100px; border-radius: 4px; border: 1px solid #e0e0e0;"/>
+                </FluentStack>
+            }
+        </FluentGridItem>
+
+        <!-- Additional Information Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Additional Information</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentLabel>Tags (comma-separated)</FluentLabel>
+            <FluentTextField @bind-Value="TagsString"
+                            Style="width: 100%;"
+                            Placeholder="dental, surgery, implants"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentLabel>Learning Objectives (comma-separated)</FluentLabel>
+            <FluentTextArea @bind-Value="ObjectivesString"
+                           Style="width: 100%;"
+                           Rows="3"
+                           Placeholder="Understand basic concepts, Apply techniques..."/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentLabel>Prerequisites (comma-separated)</FluentLabel>
+            <FluentTextArea @bind-Value="PrerequisitesString"
+                           Style="width: 100%;"
+                           Rows="2"
+                           Placeholder="Basic knowledge of..."/>
+        </FluentGridItem>
+
+        <!-- Publication Options Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Publication Options</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentCheckbox @bind-Value="Content.IsPublished"
+                           Label="Publish Course (make visible to students)"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12">
+            <FluentCheckbox @bind-Value="Content.IsFeatured"
+                           Label="Feature Course (highlight on homepage)"/>
+        </FluentGridItem>
+
+    </FluentGrid>
+</FluentDialogBody>
+
+@code {
+    [Parameter] public CourseDto Content { get; set; } = default!;
+    [Parameter] public List<CourseCategoryDto> Categories { get; set; } = new();
+    [Parameter] public string TagsString { get; set; } = string.Empty;
+    [Parameter] public string ObjectivesString { get; set; } = string.Empty;
+    [Parameter] public string PrerequisitesString { get; set; } = string.Empty;
+    [Parameter] public string ThumbnailPreview { get; set; } = string.Empty;
+    [Parameter] public string CoverImagePreview { get; set; } = string.Empty;
+    [Parameter] public EventCallback<InputFileChangeEventArgs> OnThumbnailUpload { get; set; }
+    [Parameter] public EventCallback<InputFileChangeEventArgs> OnCoverImageUpload { get; set; }
+    
+    [CascadingParameter] public FluentDialog? Dialog { get; set; }
+
+    private CourseCategoryDto? _selectedCategory;
+    private string _selectedDifficultyLevel = "Beginner";
+
+    protected override void OnParametersSet()
+    {
+        if (Content.CategoryId.HasValue && Categories.Any())
+        {
+            _selectedCategory = Categories.FirstOrDefault(c => c.Id == Content.CategoryId.Value);
+        }
+        
+        _selectedDifficultyLevel = Content.DifficultyLevel.ToString();
+    }
+
+    private void OnCategorySelected()
+    {
+        if (_selectedCategory != null)
+        {
+            Content.CategoryId = _selectedCategory.Id;
+        }
+    }
+
+    private void OnDifficultyLevelChanged()
+    {
+        Content.DifficultyLevel = Enum.Parse<DifficultyLevel>(_selectedDifficultyLevel);
+    }
+
+    private async Task HandleThumbnailUpload(InputFileChangeEventArgs e)
+    {
+        if (OnThumbnailUpload.HasDelegate)
+        {
+            await OnThumbnailUpload.InvokeAsync(e);
+        }
+    }
+
+    private async Task HandleCoverImageUpload(InputFileChangeEventArgs e)
+    {
+        if (OnCoverImageUpload.HasDelegate)
+        {
+            await OnCoverImageUpload.InvokeAsync(e);
+        }
+    }
+}
+
