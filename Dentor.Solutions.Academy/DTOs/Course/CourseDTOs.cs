@@ -129,14 +129,14 @@ public class CourseContentDto
     public int CourseModuleId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string ContentType { get; set; } = string.Empty; // Video, Document, PDF, Quiz, etc.
+    public CourseContentType CourseContentType { get; set; }
+    public ContentMimeType ContentMimeType { get; set; } 
     public int OrderIndex { get; set; }
     public int? DurationMinutes { get; set; }
     public string? BlobUrl { get; set; }
     public string? ExternalUrl { get; set; }
     public int? QuizId { get; set; }
     public long? FileSizeBytes { get; set; }
-    public string? MimeType { get; set; }
     public bool IsFreePreview { get; set; }
     public bool IsDownloadable { get; set; }
     public bool IsMandatory { get; set; }
@@ -176,7 +176,7 @@ public class CreateCourseContentDto
     public int CourseModuleId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string ContentType { get; set; } = string.Empty;
+    public ContentMimeType ContentMimeType { get; set; }
     public int OrderIndex { get; set; }
     public int? DurationMinutes { get; set; }
     public string? ExternalUrl { get; set; }
@@ -236,7 +236,7 @@ public class EnrollmentDto
 /// <summary>
 /// Result of category operation
 /// </summary>
-public class CategoryOperationResult
+public class InternalOperationResult
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
@@ -244,13 +244,3 @@ public class CategoryOperationResult
     public CourseCategoryDto? Category { get; set; }
 }
 
-//Enum content types
-public enum ContentTypes
-{
-    Video,
-    Document,
-    Pdf,
-    Quiz,
-    Exercise,
-    Other
-}

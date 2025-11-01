@@ -5,17 +5,21 @@ using Microsoft.AspNetCore.Components.Forms;
 
 // Helper classes for Course dialogs
 
-public class CourseDialogData
+public class CourseDialogData 
 {
     public CourseDto Course { get; set; } = new();
     public List<CourseCategoryDto> Categories { get; set; } = new();
-    public string TagsString { get; set; } = string.Empty;
-    public string ObjectivesString { get; set; } = string.Empty;
-    public string PrerequisitesString { get; set; } = string.Empty;
+    
     public string ThumbnailPreview { get; set; } = string.Empty;
     public string CoverImagePreview { get; set; } = string.Empty;
     public IBrowserFile? ThumbnailFile { get; set; }
     public IBrowserFile? CoverImageFile { get; set; }
+}
+
+public class CourseSimpleFieldData
+{
+    public string FieldName { get; set; } = string.Empty;
+    public string FieldValue { get; set; } = string.Empty;
 }
 
 public class CourseAssignmentData

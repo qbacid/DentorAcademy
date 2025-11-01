@@ -142,7 +142,7 @@ public class CourseContentService : ICourseContentService
             CourseModuleId = dto.CourseModuleId,
             Title = dto.Title,
             Description = dto.Description,
-            ContentType = dto.ContentType,
+            ContentMimeType = dto.ContentMimeType,
             OrderIndex = dto.OrderIndex,
             DurationMinutes = dto.DurationMinutes,
             ExternalUrl = dto.ExternalUrl,
@@ -213,7 +213,7 @@ public class CourseContentService : ICourseContentService
         await _context.SaveChangesAsync();
     }
 
-    public async Task<string> UploadContentFileAsync(int contentId, Stream fileStream, string fileName, string contentType)
+    public async Task<string> UploadContentFileAsync(int contentId, Stream fileStream, string fileName, ContentMimeType contentType)
     {
         var content = await _context.CourseContents.FindAsync(contentId);
         if (content == null)
@@ -224,7 +224,7 @@ public class CourseContentService : ICourseContentService
         var blobUrl = $"/content/{contentId}/{fileName}";
         
         content.BlobUrl = blobUrl;
-        content.MimeType = contentType;
+        content.ContentMimeType = contentType;
         content.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -313,14 +313,14 @@ public class CourseContentService : ICourseContentService
             CourseModuleId = content.CourseModuleId,
             Title = content.Title,
             Description = content.Description,
-            ContentType = content.ContentType,
+            CourseContentType = content.CourseContentType,
+            ContentMimeType = content.ContentMimeType,
             OrderIndex = content.OrderIndex,
             DurationMinutes = content.DurationMinutes,
             BlobUrl = content.BlobUrl,
             ExternalUrl = content.ExternalUrl,
             QuizId = content.QuizId,
             FileSizeBytes = content.FileSizeBytes,
-            MimeType = content.MimeType,
             IsFreePreview = content.IsFreePreview,
             IsDownloadable = content.IsDownloadable,
             IsMandatory = content.IsMandatory,

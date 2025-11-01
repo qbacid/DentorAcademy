@@ -11,10 +11,10 @@ public interface ICourseCategoryService
 {
     Task<List<CourseCategoryDto>> GetAllCategoriesAsync(bool includeInactive = false);
     Task<CourseCategoryDto?> GetCategoryByIdAsync(int id);
-    Task<CategoryOperationResult> CreateCategoryAsync(CreateCourseCategoryDto dto);
-    Task<CategoryOperationResult> UpdateCategoryAsync(UpdateCourseCategoryDto dto);
-    Task<CategoryOperationResult> DeleteCategoryAsync(int id);
-    Task<CategoryOperationResult> ReorderCategoriesAsync(List<int> categoryIds);
+    Task<InternalOperationResult> CreateCategoryAsync(CreateCourseCategoryDto dto);
+    Task<InternalOperationResult> UpdateCategoryAsync(UpdateCourseCategoryDto dto);
+    Task<InternalOperationResult> DeleteCategoryAsync(int id);
+    Task<InternalOperationResult> ReorderCategoriesAsync(List<int> categoryIds);
     Task<int> GetCourseCountByCategoryAsync(int categoryId);
     Task<List<Quiz>> GetQuizzesByCategoryAsync(int categoryId);
     Task<int> GetQuizCountByCategoryAsync(int categoryId);
@@ -28,36 +28,36 @@ public interface ICourseManagementService
     // Course CRUD
     Task<List<CourseListDto>> GetAllCoursesAsync(int? categoryId = null, bool? isPublished = null);
     Task<CourseDto?> GetCourseByIdAsync(int id);
-    Task<CategoryOperationResult> CreateCourseAsync(CourseDto dto, string userId);
-    Task<CategoryOperationResult> UpdateCourseAsync(CourseDto dto);
-    Task<CategoryOperationResult> DeleteCourseAsync(int id);
-    Task<CategoryOperationResult> PublishCourseAsync(int id);
-    Task<CategoryOperationResult> UnpublishCourseAsync(int id);
+    Task<InternalOperationResult> CreateCourseAsync(CourseDto dto, string userId);
+    Task<InternalOperationResult> UpdateCourseAsync(CourseDto dto);
+    Task<InternalOperationResult> DeleteCourseAsync(int id);
+    Task<InternalOperationResult> PublishCourseAsync(int id);
+    Task<InternalOperationResult> UnpublishCourseAsync(int id);
     
     // Module Management
     Task<List<CourseModuleDto>> GetCourseModulesAsync(int courseId);
     Task<CourseModuleDto?> GetModuleByIdAsync(int id);
-    Task<CategoryOperationResult> CreateModuleAsync(CourseModuleDto dto);
-    Task<CategoryOperationResult> UpdateModuleAsync(CourseModuleDto dto);
-    Task<CategoryOperationResult> DeleteModuleAsync(int id);
-    Task<CategoryOperationResult> ReorderModulesAsync(int courseId, List<int> moduleIds);
+    Task<InternalOperationResult> CreateModuleAsync(CourseModuleDto dto);
+    Task<InternalOperationResult> UpdateModuleAsync(CourseModuleDto dto);
+    Task<InternalOperationResult> DeleteModuleAsync(int id);
+    Task<InternalOperationResult> ReorderModulesAsync(int courseId, List<int> moduleIds);
     
     // Content Management
     Task<List<CourseContentDto>> GetModuleContentsAsync(int moduleId);
     Task<CourseContentDto?> GetContentByIdAsync(int id);
-    Task<CategoryOperationResult> CreateContentAsync(CourseContentDto dto);
-    Task<CategoryOperationResult> UpdateContentAsync(CourseContentDto dto);
-    Task<CategoryOperationResult> DeleteContentAsync(int id);
-    Task<CategoryOperationResult> ReorderContentsAsync(int moduleId, List<int> contentIds);
+    Task<InternalOperationResult> CreateContentAsync(CourseContentDto dto);
+    Task<InternalOperationResult> UpdateContentAsync(CourseContentDto dto);
+    Task<InternalOperationResult> DeleteContentAsync(int id);
+    Task<InternalOperationResult> ReorderContentsAsync(int moduleId, List<int> contentIds);
     
     // Enrollment Management
     Task<List<EnrollmentDto>> GetCourseEnrollmentsAsync(int courseId);
-    Task<CategoryOperationResult> EnrollUserAsync(int courseId, string userId);
-    Task<CategoryOperationResult> BulkEnrollUsersAsync(int courseId, List<string> userIds);
-    Task<CategoryOperationResult> UnenrollUserAsync(int enrollmentId);
+    Task<InternalOperationResult> EnrollUserAsync(int courseId, string userId);
+    Task<InternalOperationResult> BulkEnrollUsersAsync(int courseId, List<string> userIds);
+    Task<InternalOperationResult> UnenrollUserAsync(int enrollmentId);
     Task<List<int>> GetUserEnrolledCourseIdsAsync(string userId);
     
     // Image Management
-    Task<CategoryOperationResult> UploadThumbnailImageAsync(int courseId, IBrowserFile file);
-    Task<CategoryOperationResult> UploadCoverImageAsync(int courseId, IBrowserFile file);
+    Task<InternalOperationResult> UploadThumbnailImageAsync(int courseId, IBrowserFile file);
+    Task<InternalOperationResult> UploadCoverImageAsync(int courseId, IBrowserFile file);
 }

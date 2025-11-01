@@ -1,0 +1,158 @@
+
+@using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Models
+@implements IDialogContentComponent<Dentor.Solutions.Academy.DTOs.Course.CourseContentDto>
+@rendermode InteractiveServer
+
+<FluentDialogHeader>
+    <FluentLabel Typo="Typography.PaneHeader">
+        @(Content.CourseModuleId <= 0 ? "Add New Content" : "Edit Content")
+    </FluentLabel>
+    <FluentDivider Orientation="Orientation.Horizontal"/>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentGrid Spacing="2" AdaptiveRendering="true" Justify="JustifyContent.FlexStart">
+
+        <!-- Basic Information Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Basic Information</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+        
+        <FluentGridItem xs="12">
+            <FluentTextField @bind-Value="Content.Title" Style="width: 100%;" 
+                             Label="Title:" 
+                             Placeholder="e.g., Lecture 1, Video Conference Intro, Quiz 1, etc..."/>
+        </FluentGridItem>
+        
+        <!-- Content Type Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Content Type</FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6">
+            <FluentSelect OptionValue="s => _selectedContentType" Label="Select Content Type:"
+                          Placeholder="Select Content Type" ValueChanged="OnSelectedContentTypeChanged"
+                          Style="width: 100%;"
+                          TOption="string">
+                @foreach (var contentType in _contentTypes)
+                {
+                    <FluentOption Value="@contentType">@contentType</FluentOption>
+                }
+            </FluentSelect>
+        </FluentGridItem>
+        
+        <FluentGridItem xs="12" sm="6">
+            <FluentSelect OptionValue="s => _selectedContentMimeType" Label="Select Media Type:"
+                          Placeholder="Select Media Type" ValueChanged="OnSelectedContentMimeTypeChanged"
+                          Style="width: 100%;"
+                          TOption="string">
+                @foreach (var contentMimeType in _contentMimeTypes)
+                {
+                    <FluentOption Value="@contentMimeType">@contentMimeType</FluentOption>
+                }
+            </FluentSelect>
+        </FluentGridItem>
+        
+        <FluentDivider />
+        
+        <!-- Content Type Section -->
+        <FluentGridItem xs="12">
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">Upload Content: </FluentLabel>
+            <FluentDivider Orientation="Orientation.Horizontal"/>
+        </FluentGridItem>
+        
+        @switch (Content.ContentMimeType)
+        {
+            case ContentMimeType.Video:
+                
+                break;
+            case ContentMimeType.Document:
+                break;
+            case ContentMimeType.PDF:
+                break;
+            case ContentMimeType.Image:
+                break;
+            case ContentMimeType.Audio:
+                break;
+            case ContentMimeType.Quiz:
+                break;
+            case ContentMimeType.ExternalLink:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    </FluentGrid>
+</FluentDialogBody>
+
+@code {
+    [Parameter] public CourseContentDto Content { get; set; } = default!;
+    [CascadingParameter] public FluentDialog? Dialog { get; set; }
+    
+    // Content types for dropdown
+    private List<string> _contentTypes = Enum.GetValues<CourseContentType>()
+        .Select(ct => ct.ToString())
+        .ToList();
+
+    private List<string> _contentMimeTypes = [];
+    
+    private string _selectedContentType;
+    private string _selectedContentMimeType;
+    
+    private void OnSelectedContentTypeChanged(string obj)
+    {
+        Content.CourseContentType = Enum.Parse<CourseContentType>(obj);
+        switch (Content.CourseContentType)
+        {
+            case CourseContentType.Lecture:
+                _contentMimeTypes = new List<string>
+                {
+                    nameof(ContentMimeType.Document),
+                    nameof(ContentMimeType.PDF),
+                    nameof(ContentMimeType.ExternalLink)
+                };
+                break;
+            case CourseContentType.Assigment:
+                _contentMimeTypes = new List<string>
+                {
+                    nameof(ContentMimeType.Document),
+                    nameof(ContentMimeType.PDF),
+                    nameof(ContentMimeType.Quiz)
+                };
+                break;
+            case CourseContentType.Quiz:
+                _contentMimeTypes = new List<string>
+                {
+                    nameof(ContentMimeType.Quiz)
+                };
+                break;
+            case CourseContentType.Credential:
+                _contentMimeTypes = new List<string>
+                {
+                    nameof(ContentMimeType.Document),
+                    nameof(ContentMimeType.PDF),
+                };
+                break;
+            case CourseContentType.Webinar:
+                _contentMimeTypes = new List<string>
+                {
+                    nameof(ContentMimeType.Audio),
+                    nameof(ContentMimeType.Video),
+                    nameof(ContentMimeType.ExternalLink),
+                };
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    private Task OnSelectedContentMimeTypeChanged(string arg)
+    {
+        Content.ContentMimeType = Enum.Parse<ContentMimeType>(arg);
+        return Task.CompletedTask;
+    }
+
+}

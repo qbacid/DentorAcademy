@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/Dentor.Academy.Web/Components/_Imports.razor">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/Dentor.Academy.Web/Components/_Imports.razor" />
+              <option name="originalContent" value="@using System.Net.Http&#10;@using System.Net.Http.Json&#10;@using Microsoft.AspNetCore.Components.Forms&#10;@using Microsoft.AspNetCore.Components.Routing&#10;@using Microsoft.AspNetCore.Components.Web&#10;@using static Microsoft.AspNetCore.Components.Web.RenderMode&#10;@using Microsoft.AspNetCore.Components.Web.Virtualization&#10;@using Microsoft.JSInterop&#10;&#10;@using Dentor.Academy.Web&#10;@using Dentor.Academy.Web.Components&#10;@using Dentor.Academy.Web.Components.Shared&#10;@using Microsoft.AspNetCore.Authorization&#10;@using Microsoft.AspNetCore.Components.Authorization&#10;&#10;@using Dentor.Academy.Web.Models&#10;@using Dentor.Academy.Web.DTOs.Quiz&#10;@using Dentor.Academy.Web.Interfaces&#10;&#10;" />
+              <option name="updatedContent" value="@using System.Net.Http&#10;@using System.Net.Http.Json&#10;@using Microsoft.AspNetCore.Components.Forms&#10;@using Microsoft.AspNetCore.Components.Routing&#10;@using Microsoft.AspNetCore.Components.Web&#10;@using static Microsoft.AspNetCore.Components.Web.RenderMode&#10;@using Microsoft.AspNetCore.Components.Web.Virtualization&#10;@using Microsoft.JSInterop&#10;&#10;@using Dentor.Academy.Web&#10;@using Dentor.Academy.Web.Components&#10;@using Dentor.Academy.Web.Components.Shared&#10;@using Microsoft.AspNetCore.Authorization&#10;@using Microsoft.AspNetCore.Components.Authorization&#10;&#10;@using Dentor.Academy.Web.Models&#10;@using Dentor.Academy.Web.DTOs.Quiz&#10;@using Dentor.Academy.Web.Interfaces&#10;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

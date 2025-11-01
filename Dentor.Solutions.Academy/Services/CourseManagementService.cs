@@ -98,9 +98,9 @@ public class CourseManagementService : ICourseManagementService
         };
     }
 
-    public async Task<CategoryOperationResult> CreateCourseAsync(CourseDto dto, string userId)
+    public async Task<InternalOperationResult> CreateCourseAsync(CourseDto dto, string userId)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -156,9 +156,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UpdateCourseAsync(CourseDto dto)
+    public async Task<InternalOperationResult> UpdateCourseAsync(CourseDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -215,9 +215,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> DeleteCourseAsync(int id)
+    public async Task<InternalOperationResult> DeleteCourseAsync(int id)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -256,9 +256,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> PublishCourseAsync(int id)
+    public async Task<InternalOperationResult> PublishCourseAsync(int id)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -290,9 +290,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UnpublishCourseAsync(int id)
+    public async Task<InternalOperationResult> UnpublishCourseAsync(int id)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -353,12 +353,12 @@ public class CourseManagementService : ICourseManagementService
                 CourseModuleId = c.CourseModuleId,
                 Title = c.Title,
                 Description = c.Description,
-                ContentType = c.ContentType, // Already a string
+                ContentMimeType = c.ContentMimeType, // Already a string
                 OrderIndex = c.OrderIndex,
                 DurationMinutes = c.DurationMinutes ?? 0,
                 BlobUrl = c.BlobUrl,
                 FileSizeBytes = c.FileSizeBytes,
-                MimeType = c.MimeType,
+                CourseContentType = c.CourseContentType,
                 QuizId = c.QuizId,
                 ExternalUrl = c.ExternalUrl,
                 IsFreePreview = c.IsFreePreview,
@@ -394,16 +394,16 @@ public class CourseManagementService : ICourseManagementService
                 Id = c.Id,
                 CourseModuleId = c.CourseModuleId,
                 Title = c.Title,
-                ContentType = c.ContentType, // Already a string
+                ContentMimeType = c.ContentMimeType, // Already a string
                 OrderIndex = c.OrderIndex,
                 IsPublished = c.IsPublished
             }).ToList()
         };
     }
 
-    public async Task<CategoryOperationResult> CreateModuleAsync(CourseModuleDto dto)
+    public async Task<InternalOperationResult> CreateModuleAsync(CourseModuleDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -436,9 +436,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UpdateModuleAsync(CourseModuleDto dto)
+    public async Task<InternalOperationResult> UpdateModuleAsync(CourseModuleDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -473,9 +473,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> DeleteModuleAsync(int id)
+    public async Task<InternalOperationResult> DeleteModuleAsync(int id)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -507,9 +507,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> ReorderModulesAsync(int courseId, List<int> moduleIds)
+    public async Task<InternalOperationResult> ReorderModulesAsync(int courseId, List<int> moduleIds)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -563,12 +563,12 @@ public class CourseManagementService : ICourseManagementService
             CourseModuleId = c.CourseModuleId,
             Title = c.Title,
             Description = c.Description,
-            ContentType = c.ContentType, // Already a string
+            ContentMimeType = c.ContentMimeType, // Already a string
             OrderIndex = c.OrderIndex,
             DurationMinutes = c.DurationMinutes,
             BlobUrl = c.BlobUrl,
             FileSizeBytes = c.FileSizeBytes,
-            MimeType = c.MimeType,
+            CourseContentType = c.CourseContentType,
             QuizId = c.QuizId,
             ExternalUrl = c.ExternalUrl,
             IsFreePreview = c.IsFreePreview,
@@ -591,12 +591,12 @@ public class CourseManagementService : ICourseManagementService
             CourseModuleId = content.CourseModuleId,
             Title = content.Title,
             Description = content.Description,
-            ContentType = content.ContentType, // Already a string
+            ContentMimeType = content.ContentMimeType, // Already a string
             OrderIndex = content.OrderIndex,
             DurationMinutes = content.DurationMinutes,
             BlobUrl = content.BlobUrl,
             FileSizeBytes = content.FileSizeBytes,
-            MimeType = content.MimeType,
+            CourseContentType = content.CourseContentType,
             QuizId = content.QuizId,
             ExternalUrl = content.ExternalUrl,
             IsFreePreview = content.IsFreePreview,
@@ -606,9 +606,9 @@ public class CourseManagementService : ICourseManagementService
         };
     }
 
-    public async Task<CategoryOperationResult> CreateContentAsync(CourseContentDto dto)
+    public async Task<InternalOperationResult> CreateContentAsync(CourseContentDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -619,14 +619,14 @@ public class CourseManagementService : ICourseManagementService
                 CourseModuleId = dto.CourseModuleId,
                 Title = dto.Title,
                 Description = dto.Description,
-                ContentType = dto.ContentType, // Already a string, no ToString() needed
+                ContentMimeType = dto.ContentMimeType, // Already a string, no ToString() needed
                 OrderIndex = dto.OrderIndex,
                 DurationMinutes = dto.DurationMinutes,
                 BlobContainerName = null, // Set when uploading to Azure
                 BlobName = null,
                 BlobUrl = dto.BlobUrl,
                 FileSizeBytes = dto.FileSizeBytes,
-                MimeType = dto.MimeType,
+                CourseContentType = dto.CourseContentType,
                 QuizId = dto.QuizId,
                 ExternalUrl = dto.ExternalUrl,
                 IsFreePreview = dto.IsFreePreview,
@@ -652,9 +652,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UpdateContentAsync(CourseContentDto dto)
+    public async Task<InternalOperationResult> UpdateContentAsync(CourseContentDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -669,7 +669,7 @@ public class CourseManagementService : ICourseManagementService
 
             content.Title = dto.Title;
             content.Description = dto.Description;
-            content.ContentType = dto.ContentType.ToString();
+            content.ContentMimeType = dto.ContentMimeType;
             content.OrderIndex = dto.OrderIndex;
             content.DurationMinutes = dto.DurationMinutes;
             content.QuizId = dto.QuizId;
@@ -695,9 +695,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> DeleteContentAsync(int id)
+    public async Task<InternalOperationResult> DeleteContentAsync(int id)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -726,9 +726,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> ReorderContentsAsync(int moduleId, List<int> contentIds)
+    public async Task<InternalOperationResult> ReorderContentsAsync(int moduleId, List<int> contentIds)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -794,9 +794,9 @@ public class CourseManagementService : ICourseManagementService
         }).ToList();
     }
 
-    public async Task<CategoryOperationResult> EnrollUserAsync(int courseId, string userId)
+    public async Task<InternalOperationResult> EnrollUserAsync(int courseId, string userId)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -838,9 +838,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> BulkEnrollUsersAsync(int courseId, List<string> userIds)
+    public async Task<InternalOperationResult> BulkEnrollUsersAsync(int courseId, List<string> userIds)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -885,9 +885,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UnenrollUserAsync(int enrollmentId)
+    public async Task<InternalOperationResult> UnenrollUserAsync(int enrollmentId)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -935,9 +935,9 @@ public class CourseManagementService : ICourseManagementService
     private static readonly string[] AllowedImageMimeTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
     private const long MaxImageSizeBytes = 2 * 1024 * 1024; // 2 MB
 
-    public async Task<CategoryOperationResult> UploadThumbnailImageAsync(int courseId, IBrowserFile file)
+    public async Task<InternalOperationResult> UploadThumbnailImageAsync(int courseId, IBrowserFile file)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -1003,9 +1003,9 @@ public class CourseManagementService : ICourseManagementService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UploadCoverImageAsync(int courseId, IBrowserFile file)
+    public async Task<InternalOperationResult> UploadCoverImageAsync(int courseId, IBrowserFile file)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {

@@ -1,4 +1,5 @@
 using Dentor.Solutions.Academy.DTOs.Course;
+using Dentor.Solutions.Academy.Models;
 
 namespace Dentor.Solutions.Academy.Interfaces;
 
@@ -22,7 +23,7 @@ public interface ICourseContentService
     Task<CourseContentDto> UpdateContentAsync(int contentId, UpdateCourseContentDto dto);
     Task DeleteContentAsync(int contentId);
     Task ReorderContentsAsync(int moduleId, List<int> contentIds);
-    Task<string> UploadContentFileAsync(int contentId, Stream fileStream, string fileName, string contentType);
+    Task<string> UploadContentFileAsync(int contentId, Stream fileStream, string fileName, ContentMimeType contentType);
     
     // Course Structure
     Task<CourseStructureDto> GetCourseStructureAsync(int courseId, string? userId = null);

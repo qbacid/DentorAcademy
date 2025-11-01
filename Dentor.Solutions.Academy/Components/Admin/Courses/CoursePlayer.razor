@@ -3,6 +3,7 @@
 @using System.Security.Claims
 @using Dentor.Solutions.Academy.DTOs.Course
 @using Dentor.Solutions.Academy.Interfaces
+@using Dentor.Solutions.Academy.Models
 
 @inject ICourseContentService ContentService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -75,7 +76,7 @@
                                                 </div>
                                                 <div class="flex-grow-1">
                                                     <div class="d-flex align-items-center gap-2">
-                                                        <i class="bi @GetContentIcon(content.ContentType) text-primary"></i>
+                                                        <i class="bi @GetContentIcon(content.ContentMimeType) text-primary"></i>
                                                         <span class="@(IsCurrentContent(content.Id) ? "fw-bold" : "")">@content.Title</span>
                                                     </div>
                                                     @if (content.DurationMinutes.HasValue)
@@ -138,7 +139,7 @@
 
                         <!-- Content Body -->
                         <div class="content-body p-4">
-                            @if (_currentContent.ContentType == "Video")
+                            @if (_currentContent.ContentMimeType == ContentMimeType.Video)
                             {
                                 <div class="video-container mb-4">
                                     @if (!string.IsNullOrEmpty(_currentContent.ExternalUrl))
@@ -167,7 +168,7 @@
                                     else if (!string.IsNullOrEmpty(_currentContent.BlobUrl))
                                     {
                                         <video class="w-100" controls>
-                                            <source src="@_currentContent.BlobUrl" type="@_currentContent.MimeType">
+                                            <source src="@_currentContent.BlobUrl" type="@_currentContent.CourseContentType">
                                             Your browser does not support the video tag.
                                         </video>
                                     }
@@ -179,13 +180,13 @@
                                     }
                                 </div>
                             }
-                            else if (_currentContent.ContentType == "Audio")
+                            else if (_currentContent.ContentMimeType == ContentMimeType.Audio)
                             {
                                 <div class="audio-container mb-4">
                                     @if (!string.IsNullOrEmpty(_currentContent.BlobUrl))
                                     {
                                         <audio class="w-100" controls>
-                                            <source src="@_currentContent.BlobUrl" type="@_currentContent.MimeType">
+                                            <source src="@_currentContent.BlobUrl" type="@_currentContent.CourseContentType">
                                             Your browser does not support the audio tag.
                                         </audio>
                                     }
@@ -197,12 +198,12 @@
                                     }
                                 </div>
                             }
-                            else if (_currentContent.ContentType == "PDF" || _currentContent.ContentType == "Document")
+                            else if (_currentContent.ContentMimeType == ContentMimeType.PDF || _currentContent.ContentMimeType == ContentMimeType.Document)
                             {
                                 <div class="document-container mb-4">
                                     @if (!string.IsNullOrEmpty(_currentContent.BlobUrl))
                                     {
-                                        @if (_currentContent.ContentType == "PDF")
+                                        @if (_currentContent.ContentMimeType == ContentMimeType.PDF)
                                         {
                                             <iframe src="@_currentContent.BlobUrl" 
                                                     style="width: 100%; height: 800px; border: none;"
@@ -230,7 +231,7 @@
                                     }
                                 </div>
                             }
-                            else if (_currentContent.ContentType == "Quiz")
+                            else if (_currentContent.ContentMimeType == ContentMimeType.Quiz)
                             {
                                 <div class="quiz-container">
                                     @if (_currentContent.QuizId.HasValue)
@@ -246,7 +247,7 @@
                                     }
                                 </div>
                             }
-                            else if (_currentContent.ContentType == "ExternalLink")
+                            else if (_currentContent.ContentMimeType == ContentMimeType.ExternalLink)
                             {
                                 <div class="external-link-container">
                                     @if (!string.IsNullOrEmpty(_currentContent.ExternalUrl))
@@ -520,16 +521,16 @@
         }
     }
 
-    private string GetContentIcon(string contentType)
+    private string GetContentIcon(ContentMimeType contentMimeType)
     {
-        return contentType switch
+        return contentMimeType switch
         {
-            "Video" => "bi-play-circle-fill",
-            "Document" => "bi-file-earmark-text-fill",
-            "PDF" => "bi-file-earmark-pdf-fill",
-            "Audio" => "bi-music-note-beamed",
-            "Quiz" => "bi-question-circle-fill",
-            "ExternalLink" => "bi-link-45deg",
+            ContentMimeType.Video => "bi-play-circle-fill",
+            ContentMimeType.Document => "bi-file-earmark-text-fill",
+            ContentMimeType.PDF => "bi-file-earmark-pdf-fill",
+            ContentMimeType.Audio => "bi-music-note-beamed",
+            ContentMimeType.Quiz => "bi-question-circle-fill",
+            ContentMimeType.ExternalLink => "bi-link-45deg",
             _ => "bi-file-earmark"
         };
     }

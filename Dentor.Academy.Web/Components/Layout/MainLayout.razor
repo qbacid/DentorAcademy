@@ -1,15 +1,46 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page layout-with-sidebar">
-    <aside class="sidebar">
-        <NavMenu />
-    </aside>
+<header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <button class="btn btn-outline-light d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+                <i class="bi bi-list"></i>
+            </button>
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="images/logo_pro.png" alt="Luxadent Pro" width="120" class="me-2"/>
+                <span class="fw-semibold">Dentor Academy</span>
+            </a>
+        </div>
+    </nav>
+</header>
 
-    <main>
-        <article class="content">
-            @Body
-        </article>
-    </main>
+<div class="container-fluid">
+    <div class="row flex-nowrap">
+        <!-- Sidebar: offcanvas on small screens, sticky column on lg+ -->
+        <div class="col-12 col-lg-3 col-xl-2 p-0 border-end d-none d-lg-block sidebar-column">
+            <div class="sidebar-sticky h-100 overflow-auto">
+                <NavMenu />
+            </div>
+        </div>
+
+        <!-- Offcanvas for small screens -->
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">Menu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-0">
+                <NavMenu />
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <main class="col p-3 p-lg-4">
+            <article class="content">
+                @Body
+            </article>
+        </main>
+    </div>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>

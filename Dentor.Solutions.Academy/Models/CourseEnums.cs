@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+
 namespace Dentor.Solutions.Academy.Models;
 
 /// <summary>
@@ -11,17 +14,29 @@ public enum DifficultyLevel
 }
 
 /// <summary>
-/// Type of course content
+/// Mime type of course content
 /// </summary>
-public enum InternalContentType
+public enum ContentMimeType
 {
-    Video = 0,
-    Document = 1,
-    PDF = 2,
-    Image = 3,
-    Audio = 4,
-    Quiz = 5,
-    ExternalLink = 6
+    [Display(Name = "Video")] Video = 0,
+    [Display(Name = "Document")] Document = 1,
+    [Display(Name = "PDF")] PDF = 2,
+    [Display(Name = "Image")] Image = 3,
+    [Display(Name = "Audio")] Audio = 4,
+    [Display(Name = "Quiz")] Quiz = 5,
+    [Display(Name = "External Link")] ExternalLink = 6
+}
+
+/// <summary>
+/// use to filter and control the logic the ContentMimeType enum
+/// </summary>
+public enum CourseContentType
+{
+    [Display(Name = "Lecture")] Lecture = 1, //a lecture is a video or document or just a single type of mime type of content
+    [Display(Name = "Assigment")] Assigment = 2, //is a type of content that requires submission
+    [Display(Name = "Quiz")] Quiz = 3, //is a type of content that requires submission and can have a passing score and time limi
+    [Display(Name = "Credential")] Credential = 4, //is just a credential or badge that can be earned
+    [Display(Name = "Webinar")] Webinar = 5 //is a live or recorded webinar or long-content video
 }
 
 /// <summary>

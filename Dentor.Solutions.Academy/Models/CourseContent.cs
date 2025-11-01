@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Dentor.Solutions.Academy.DTOs.Course;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dentor.Solutions.Academy.Models;
@@ -10,7 +11,7 @@ namespace Dentor.Solutions.Academy.Models;
 /// </summary>
 [Table("CourseContents")]
 [Index(nameof(CourseModuleId), nameof(OrderIndex))]
-[Index(nameof(ContentType))]
+[Index(nameof(ContentMimeType))]
 public class CourseContent
 {
   [Key]
@@ -31,9 +32,12 @@ public class CourseContent
   public string? Description { get; set; }
 
   [Required]
-  [MaxLength(50)]
-  [Column("ContentType")]
-  public string ContentType { get; set; } = string.Empty; // Video, Document, PDF, Image, Audio, Quiz, etc.
+  [Column("ContentMimeType")]
+  public ContentMimeType ContentMimeType { get; set; } // Video, Document, PDF, Image, Audio, Quiz, etc.
+  
+  [MaxLength(100)]
+  [Column("CourseContentType")]
+  public CourseContentType CourseContentType { get; set; }
 
   [Column("OrderIndex")]
   public int OrderIndex { get; set; } = 0;
@@ -56,10 +60,6 @@ public class CourseContent
 
   [Column("FileSizeBytes")]
   public long? FileSizeBytes { get; set; }
-
-  [MaxLength(100)]
-  [Column("MimeType")]
-  public string? MimeType { get; set; }
 
   // For quiz content type
   [Column("QuizId")]

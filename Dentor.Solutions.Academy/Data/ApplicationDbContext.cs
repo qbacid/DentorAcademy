@@ -176,6 +176,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // Configure CourseContent entity
         modelBuilder.Entity<CourseContent>(entity =>
         {
+            // Store ContentType enum as a string to avoid casting issues
+            entity.Property(e => e.ContentMimeType)
+                .HasConversion<string>()
+                .HasMaxLength(50);
+            
+            // Store ContentType enum as a string to avoid casting issues
+            entity.Property(e => e.CourseContentType)
+                .HasConversion<string>()
+                .HasMaxLength(50);
+
             entity.HasMany(cc => cc.Progress)
                 .WithOne(cp => cp.CourseContent)
                 .HasForeignKey(cp => cp.CourseContentId)

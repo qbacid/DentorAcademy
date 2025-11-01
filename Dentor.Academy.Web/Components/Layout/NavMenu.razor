@@ -1,66 +1,65 @@
-﻿<div class="top-row navbar navbar-dark">
-    <div class="container-fluid">
-        <div class="brand">
-            <img src="images/logo_pro.png" alt="Luxadent Pro" width="140" height="auto"/>
+﻿@* Sidebar navigation using Bootstrap *@
+<div class="d-flex flex-column h-100">
+    <div class="p-3 border-bottom bg-body-tertiary">
+        <div class="d-flex align-items-center">
+            <img src="images/logo_pro.png" alt="Luxadent Pro" width="140" height="auto" class="me-2"/>
         </div>
     </div>
-</div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler"/>
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="links">
-        <NavLink href="" Match="NavLinkMatch.All">
-            <i class="bi bi-house-door"></i> Home
+    <nav class="nav nav-pills flex-column p-2 gap-1">
+        <NavLink class="nav-link d-flex align-items-center" href="" Match="NavLinkMatch.All" data-bs-dismiss="offcanvas">
+            <i class="bi bi-house-door me-2"></i> Home
         </NavLink>
-        <NavLink href="courses">
-            <i class="bi bi-journal-text"></i> Courses
+        <NavLink class="nav-link d-flex align-items-center" href="courses" data-bs-dismiss="offcanvas">
+            <i class="bi bi-journal-text me-2"></i> Courses
         </NavLink>
-        <NavLink href="quizzes">
-            <i class="bi bi-list-check"></i> Quizzes
+        <NavLink class="nav-link d-flex align-items-center" href="quizzes" data-bs-dismiss="offcanvas">
+            <i class="bi bi-list-check me-2"></i> Quizzes
         </NavLink>
         <AuthorizeView>
             <Authorized>
-                <NavLink href="my-performance">
-                    <i class="bi bi-graph-up"></i> My Performance
+                <NavLink class="nav-link d-flex align-items-center" href="my-performance" data-bs-dismiss="offcanvas">
+                    <i class="bi bi-graph-up me-2"></i> My Performance
                 </NavLink>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Roles="Admin">
             <Authorized>
-                <NavLink href="admin/courses">
-                    <i class="bi bi-gear"></i> Course Management
+                <NavLink class="nav-link d-flex align-items-center" href="admin/courses" data-bs-dismiss="offcanvas">
+                    <i class="bi bi-gear me-2"></i> Course Management
                 </NavLink>
-                <NavLink href="admin/quizzes">
-                    <i class="bi bi-question-circle"></i> Quiz Management
+                <NavLink class="nav-link d-flex align-items-center" href="admin/quizzes" data-bs-dismiss="offcanvas">
+                    <i class="bi bi-question-circle me-2"></i> Quiz Management
                 </NavLink>
-                <NavLink href="quiz-import">
-                    <i class="bi bi-upload"></i> Import Quiz
+                <NavLink class="nav-link d-flex align-items-center" href="quiz-import" data-bs-dismiss="offcanvas">
+                    <i class="bi bi-upload me-2"></i> Import Quiz
                 </NavLink>
-                <NavLink href="user-management">
-                    <i class="bi bi-people"></i> User Management
+                <NavLink class="nav-link d-flex align-items-center" href="user-management" data-bs-dismiss="offcanvas">
+                    <i class="bi bi-people me-2"></i> User Management
                 </NavLink>
             </Authorized>
         </AuthorizeView>
     </nav>
 
-    <div class="sidebar-auth">
+    <div class="mt-auto border-top p-3 small">
         <AuthorizeView>
             <Authorized>
-                <div class="auth-user-info">
-                    <small>@context.User.Identity?.Name</small>
+                <div class="mb-2 text-body-secondary">
+                    @context.User.Identity?.Name
                 </div>
-                <a href="/logout" class="auth-link">
-                    <i class="bi bi-box-arrow-right"></i> Sign out
+                <a href="/logout" class="link-body-emphasis text-decoration-none" data-bs-dismiss="offcanvas">
+                    <i class="bi bi-box-arrow-right me-1"></i> Sign out
                 </a>
             </Authorized>
             <NotAuthorized>
-                <a href="/login" class="auth-link">
-                    <i class="bi bi-box-arrow-in-right"></i> Sign in
-                </a>
-                <a href="/register" class="auth-link">
-                    <i class="bi bi-person-plus"></i> Register
-                </a>
+                <div class="d-flex flex-column gap-2">
+                    <a href="/login" class="btn btn-outline-primary btn-sm" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
+                    </a>
+                    <a href="/register" class="btn btn-primary btn-sm" data-bs-dismiss="offcanvas">
+                        <i class="bi bi-person-plus me-1"></i> Register
+                    </a>
+                </div>
             </NotAuthorized>
         </AuthorizeView>
     </div>

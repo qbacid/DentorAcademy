@@ -2,13 +2,13 @@
 
 @attribute [Authorize(Roles = "Admin,Instructor")]
 @using Dentor.Solutions.Academy.DTOs.Course
+@using Dentor.Solutions.Academy.Extensions
 @using Dentor.Solutions.Academy.Interfaces
 @using Dentor.Solutions.Academy.Models
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.FluentUI.AspNetCore.Components.Icons.Filled
 
 @inject IDialogService DialogService
-@inject IMessageService MessageService
+@inject IMessageService MessageServiceProvider
 @inject ICourseCategoryService CategoryService
 
 @rendermode InteractiveServer
@@ -323,7 +323,11 @@
         {
             _message = $"Error loading categories: {ex.Message}";
             _isError = true;
-            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            await MessageServiceProvider
+                .AddDismissibleMessage(nameof(SaveEntityResult.Error),
+                $"Error loading categories: {ex.Message}"
+                , SaveEntityResult.Success);
+            
         }
         finally
         {
@@ -344,21 +348,22 @@
             {
                 _message = result.Message;
                 _isError = false;
-                await AddDismissibleMessage(_message, SaveEntityResult.Success);
+                
+                await MessageServiceProvider.AddDismissibleMessage(  nameof(SaveEntityResult.Success),_message, SaveEntityResult.Success);
                 await LoadCategories();
             }
             else
             {
                 _message = string.Join(", ", result.Errors);
                 _isError = true;
-                await AddDismissibleMessage(_message, SaveEntityResult.Error);
+                await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Error), _message, SaveEntityResult.Error);
             }
         }
         catch (Exception ex)
         {
             _message = $"Error: {ex.Message}";
             _isError = true;
-            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Error), _message, SaveEntityResult.Error);
         }
         finally
         {
@@ -394,21 +399,21 @@
             {
                 _message = saveResult.Message;
                 _isError = false;
-                await AddDismissibleMessage(_message, SaveEntityResult.Success);
+                await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Success),_message, SaveEntityResult.Success);
                 await LoadCategories();
             }
             else
             {
                 _message = string.Join(", ", saveResult.Errors);
                 _isError = true;
-                await AddDismissibleMessage(_message, SaveEntityResult.Error);
+                await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Error),_message, SaveEntityResult.Error);
             }
         }
         catch (Exception e)
         {
             _message = e.Message;
             _isError = true;
-            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Error),_message, SaveEntityResult.Error);
         }
     }
 
@@ -445,21 +450,21 @@
             {
                 _message = saveResult.Message;
                 _isError = false;
-                await AddDismissibleMessage(_message, SaveEntityResult.Success);
+                await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Success),_message, SaveEntityResult.Success);
                 await LoadCategories();
             }
             else
             {
                 _message = string.Join(", ", saveResult.Errors);
                 _isError = true;
-                await AddDismissibleMessage(_message, SaveEntityResult.Error);
+                await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Error),_message, SaveEntityResult.Error);
             }
         }
         catch (Exception e)
         {
             _message = e.Message;
             _isError = true;
-            await AddDismissibleMessage(_message, SaveEntityResult.Error);
+            await MessageServiceProvider.AddDismissibleMessage(nameof(SaveEntityResult.Error),_message, SaveEntityResult.Error);
         }
     }
     
@@ -470,24 +475,6 @@
         var dialog = await DialogService.ShowConfirmationAsync(formattedMessage);
         DialogResult result = await dialog.Result;
         return result.Cancelled;
-    }
-    
-    private async Task AddDismissibleMessage(string resultMessage, SaveEntityResult result)
-    {
-        var message = result != SaveEntityResult.Success
-            ? $"Error:{resultMessage}"
-            : $"Operation completed: {resultMessage}";
-
-        var type = result != SaveEntityResult.Success ? MessageIntent.Error : MessageIntent.Success;
-        await MessageService.ShowMessageBarAsync(options =>
-        {
-            options.Title = message;
-            options.Intent = type;
-            options.Section = nameof(MessageSessions.MESSAGES_TOP);
-            options.AllowDismiss = true;
-            options.ClearAfterNavigation = true;
-            options.Timeout = 3 * 1000;
-        });
     }
     
     private string FormatRelativeTime(DateTime dateTime)

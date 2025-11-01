@@ -1,0 +1,43 @@
+
+@using Dentor.Solutions.Academy.DTOs.Course
+@implements IDialogContentComponent<Dentor.Solutions.Academy.DTOs.Course.CourseModuleDto>
+@inject IDialogService DialogService
+@rendermode InteractiveServer
+
+<FluentDialogHeader>
+    <FluentLabel Typo="Typography.PaneHeader">
+        @(string.IsNullOrEmpty(Content.Title) ? "Add New Module" : "Edit Module")
+    </FluentLabel>
+    <FluentDivider Orientation="Orientation.Horizontal"/>
+</FluentDialogHeader>
+
+<FluentDialogBody> 
+    <FluentStack Orientation="Orientation.Vertical" Style="width: 100%;">
+        <FluentTextField Label="Module Title: *"
+                         @bind-Value="Content.Title"
+                         Placeholder="e.g., Introduction to the Course"
+                         Style="width: 100%;"/>
+
+        <FluentTextArea Label="Description:"
+                        @bind-Value="Content.Description"
+                        Placeholder="Brief description of what this module covers"
+                        Rows="3"
+                        Style="width: 100%;"/>
+
+        <FluentNumberField Label="Estimated Duration (minutes):"
+                           @bind-Value="Content.EstimatedDurationMinutes"
+                           Placeholder="Optional"
+                           Style="width: 100%;"/>
+
+        <FluentStack Orientation="Orientation.Horizontal" xs="12" Width="100%">
+            <FluentCheckbox @bind-Value="Content.IsPublished"
+                            Label="Make te Module visible inside the Course)"/>
+        </FluentStack>
+        
+    </FluentStack>
+</FluentDialogBody>
+
+@code {
+    [Parameter] public CourseModuleDto Content { get; set; } = default!;
+    [CascadingParameter] public FluentDialog? Dialog { get; set; }
+}

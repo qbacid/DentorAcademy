@@ -81,9 +81,9 @@ public class CourseCategoryService : ICourseCategoryService
         return category;
     }
 
-    public async Task<CategoryOperationResult> CreateCategoryAsync(CreateCourseCategoryDto dto)
+    public async Task<InternalOperationResult> CreateCategoryAsync(CreateCourseCategoryDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -128,9 +128,9 @@ public class CourseCategoryService : ICourseCategoryService
         return result;
     }
 
-    public async Task<CategoryOperationResult> UpdateCategoryAsync(UpdateCourseCategoryDto dto)
+    public async Task<InternalOperationResult> UpdateCategoryAsync(UpdateCourseCategoryDto dto)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -179,9 +179,9 @@ public class CourseCategoryService : ICourseCategoryService
         return result;
     }
 
-    public async Task<CategoryOperationResult> DeleteCategoryAsync(int id)
+    public async Task<InternalOperationResult> DeleteCategoryAsync(int id)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {
@@ -220,9 +220,9 @@ public class CourseCategoryService : ICourseCategoryService
         return result;
     }
 
-    public async Task<CategoryOperationResult> ReorderCategoriesAsync(List<int> categoryIds)
+    public async Task<InternalOperationResult> ReorderCategoriesAsync(List<int> categoryIds)
     {
-        var result = new CategoryOperationResult();
+        var result = new InternalOperationResult();
 
         try
         {

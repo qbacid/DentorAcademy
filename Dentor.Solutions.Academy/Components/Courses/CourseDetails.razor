@@ -123,7 +123,7 @@ else if (_course != null)
                             }
                         </Authorized>
                         <NotAuthorized>
-                            <FluentAnchor Href="@($"/login?returnUrl=/course/{CourseId}")"
+                            <FluentAnchor Href="@($"/account/login?returnUrl=/course/{CourseId}")"
                                           Appearance="Appearance.Accent"
                                           Style="border-radius: 12px;"
                                           IconEnd="@(new Icons.Regular.Size20.ArrowRight())">
@@ -393,17 +393,17 @@ else
 
     private string GetContentIcon(string contentType)
     {
-        var definedContentTpe = Enum.TryParse(contentType, out InternalContentType parsedContentType);
+        var definedContentTpe = Enum.TryParse(contentType, out ContentMimeType parsedContentType);
         if (definedContentTpe)
         {
             return parsedContentType switch
             {
-                InternalContentType.Video => "bi-play-circle-fill",
-                InternalContentType.Document => "bi-file-earmark-text-fill",
-                InternalContentType.PDF => "bi-file-earmark-pdf-fill",
-                InternalContentType.Audio => "bi-music-note-beamed",
-                InternalContentType.Quiz => "bi-question-circle-fill",
-                InternalContentType.ExternalLink => "bi-link-45deg",
+                ContentMimeType.Video => "bi-play-circle-fill",
+                ContentMimeType.Document => "bi-file-earmark-text-fill",
+                ContentMimeType.PDF => "bi-file-earmark-pdf-fill",
+                ContentMimeType.Audio => "bi-music-note-beamed",
+                ContentMimeType.Quiz => "bi-question-circle-fill",
+                ContentMimeType.ExternalLink => "bi-link-45deg",
                 _ => "bi-file-earmark"
             };
         }

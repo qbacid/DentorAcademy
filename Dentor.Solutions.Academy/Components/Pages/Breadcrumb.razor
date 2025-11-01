@@ -1,0 +1,34 @@
+@* Reusable Breadcrumb Component using FluentUI *@
+
+<nav aria-label="breadcrumb" class="breadcrumb-nav mb-3">
+    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+        @for (int i = 0; i < Items.Count; i++)
+        {
+            var item = Items[i];
+            var isLast = i == Items.Count - 1;
+            
+            @if (!isLast)
+            {
+                <FluentAnchor Href="@item.Href" Appearance="Appearance.Hypertext">
+                    @item.Text
+                </FluentAnchor>
+                <span class="breadcrumb-separator">/</span>
+            }
+            else
+            {
+                <span class="breadcrumb-current" aria-current="page">
+                    @item.Text
+                </span>
+            }
+        }
+    </FluentStack>
+</nav>
+
+@code {
+    /// <summary>
+    /// List of breadcrumb items to display
+    /// </summary>
+    [Parameter]
+    public List<BreadcrumbItem> Items { get; set; } = new();
+}
+

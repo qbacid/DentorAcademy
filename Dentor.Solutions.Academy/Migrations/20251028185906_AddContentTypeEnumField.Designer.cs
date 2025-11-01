@@ -3,6 +3,7 @@ using System;
 using Dentor.Solutions.Academy.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dentor.Solutions.Academy.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251028185906_AddContentTypeEnumField")]
+    partial class AddContentTypeEnumField
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -473,17 +476,11 @@ namespace Dentor.Solutions.Academy.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("BlobUrl");
 
-                    b.Property<string>("ContentMimeType")
+                    b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("ContentMimeType");
-
-                    b.Property<string>("CourseContentType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("CourseContentType");
+                        .HasColumnName("ContentType");
 
                     b.Property<int>("CourseModuleId")
                         .HasColumnType("integer")
@@ -527,6 +524,11 @@ namespace Dentor.Solutions.Academy.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("IsPublished");
 
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("MimeType");
+
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer")
                         .HasColumnName("OrderIndex");
@@ -547,7 +549,7 @@ namespace Dentor.Solutions.Academy.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContentMimeType");
+                    b.HasIndex("ContentType");
 
                     b.HasIndex("QuizId");
 

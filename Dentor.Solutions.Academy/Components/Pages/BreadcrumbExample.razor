@@ -1,0 +1,101 @@
+@page "/breadcrumb-example"
+@* This is an example page demonstrating the Breadcrumb component usage *@
+
+<PageTitle>Breadcrumb Component Example</PageTitle>
+
+<div class="container py-4">
+    <h1>Breadcrumb Component Examples</h1>
+    <p class="text-muted">This page demonstrates different ways to use the reusable Breadcrumb component.</p>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Example 1: Static Breadcrumb</h5>
+        </div>
+        <div class="card-body">
+            <Breadcrumb Items="@_staticBreadcrumb" />
+            
+            <div class="mt-3">
+                <small class="text-muted">Code:</small>
+                <pre class="bg-light p-2 rounded"><code>private List&lt;BreadcrumbItem&gt; _staticBreadcrumb = new()
+{
+    new BreadcrumbItem("Home", "/"),
+    new BreadcrumbItem("Dashboard", "/dashboard"),
+    new BreadcrumbItem("Current Page")
+};</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Example 2: Dynamic Breadcrumb</h5>
+        </div>
+        <div class="card-body">
+            <Breadcrumb Items="@_dynamicBreadcrumb" />
+            
+            <button class="btn btn-sm btn-primary mt-3" @onclick="UpdateDynamicBreadcrumb">
+                Update Breadcrumb
+            </button>
+            
+            <div class="mt-3">
+                <small class="text-muted">This breadcrumb can be updated dynamically based on application state.</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Example 3: Deep Navigation</h5>
+        </div>
+        <div class="card-body">
+            <Breadcrumb Items="@_deepBreadcrumb" />
+            
+            <div class="mt-3">
+                <small class="text-muted">Shows a breadcrumb with multiple levels of navigation.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Example 1: Static breadcrumb
+    private List<BreadcrumbItem> _staticBreadcrumb = new()
+    {
+        new BreadcrumbItem("Home", "/"),
+        new BreadcrumbItem("Dashboard", "/dashboard"),
+        new BreadcrumbItem("Current Page")
+    };
+
+    // Example 2: Dynamic breadcrumb
+    private List<BreadcrumbItem> _dynamicBreadcrumb = new()
+    {
+        new BreadcrumbItem("Home", "/"),
+        new BreadcrumbItem("Items", "/items"),
+        new BreadcrumbItem("Item 1")
+    };
+
+    private int _itemCounter = 1;
+
+    // Example 3: Deep navigation breadcrumb
+    private List<BreadcrumbItem> _deepBreadcrumb = new()
+    {
+        new BreadcrumbItem("Home", "/"),
+        new BreadcrumbItem("Courses", "/instructor/courses"),
+        new BreadcrumbItem("Programming", "/courses/programming"),
+        new BreadcrumbItem("C# Advanced", "/courses/programming/csharp-advanced"),
+        new BreadcrumbItem("Module 3", "/courses/programming/csharp-advanced/module-3"),
+        new BreadcrumbItem("Lesson 5")
+    };
+
+    private void UpdateDynamicBreadcrumb()
+    {
+        _itemCounter++;
+        _dynamicBreadcrumb = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("Items", "/items"),
+            new BreadcrumbItem($"Item {_itemCounter}")
+        };
+    }
+}
+
